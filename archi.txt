@@ -1,0 +1,55 @@
+The process of registering:
+	Registering = sending your 'credentials' to the server with a register request
+	
+	Step 1: 'create' (and save) credentials
+		Option 1: OAuth
+			request token from Google using getAuthToken
+	    
+		Option 2: Two-step registration
+			fill in username+password, an email is sent, clicking on link verifies account.
+	    
+	Step 2: make the request
+		POST to /user
+	  
+		Option 1: OAuth
+			include token in authorization header
+	  
+		Option 2: Basic Auth
+			include base-64 encoded username+password in authorization header
+	  
+		Option 3: Digest Auth
+			recieve nonce, make md5 hash of password, send in authorization header
+
+The process of logging in:
+	Logging in = sending your 'credentials' to the server, in return receiving a session id
+	
+	Step 1:
+		get Credentials from persistent storage
+	
+	POST to /session
+
+The process of bonding:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+alternative:
+public class Dyad {
+	Registration = new DyadServerSimpleOAuthRegistration();
+	PushNotifier = new C2DMPushNotifier();
+	Bond = new BumpBond();
+	Connection = new MyDyadConnection();
+	
+	setRegistration()
+	setPuch....
+}
