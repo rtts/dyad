@@ -1,123 +1,61 @@
 package com.r2src.dyad;
 
-import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import android.accounts.AccountManager;
-import android.accounts.AccountManagerFuture;
-import android.accounts.AuthenticatorException;
-import android.accounts.OperationCanceledException;
-import android.app.Activity;
-import android.os.Bundle;
-import android.util.Log;
-
-public class Dyad {
-	private static final String TAG = "Dyad";
+/**
+ * A Dyad is a pair of individuals maintaining a socially significant
+ * relationship. The prime purpose of a Dyad is to establish a peer-to-peer
+ * communication channel between these individuals, which can then be used to
+ * transfer any type of streaming data.
+ * <p>
+ * Dyads need to be bonded by calling {@link #bond} after setting a
+ * {@link Bonder} object with the {@link #setBonder} method. When a second
+ * device calls the bond method and its bonder supplies the same secret, the
+ * server will bond the devices and the Dyad is fully operational.
+ * <p>
+ * A fully operational Dyad can be used to request a {@link DyadStream} object
+ * by calling {@link #getStream}.
+ */
+public abstract class Dyad {
+	private DyadAccount account;
 	private Bonder bonder;
-	State state;
-	
-	enum State {
-		VIRGIN,
-		REGISTERED,
-		LOGGED_IN,
-		BONDED
-	};
-	
-	public void setBonder(Bonder b) {
-		bonder = b;
-	}
-	
-	/**
-	 * Registers the user with the Dyad server
-	 * @param activity Needed because the accountmanager might prompt the user
-	 */
-	public void register(Activity activity) {
+	private final ExecutorService exec = Executors.newCachedThreadPool();
 
-		try {
-			Account account = getAccount(activity);
-			Log.d(TAG, "Account name: " + account.getAccountName());
-			if (account.getAuthToken() != null && account.getAuthToken() != "") {
-				Log.d(TAG, "Non-empty Account Token found");
-			}
-		} catch (OperationCanceledException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (AuthenticatorException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		//request(token);
-		//send(request);
-		
+	/**
+	 * Protected constructor -- call {@link DyadAccount.newDyad()} to create a
+	 * new Dyad.
+	 */
+	protected Dyad(DyadAccount account) {
+		if (account == null)
+			throw new IllegalArgumentException("account can't be null");
+		this.account = account;
 	}
-	
-	public Account getAccount(Activity activity) throws OperationCanceledException, AuthenticatorException, IOException {
-		AccountManager manager = AccountManager.get(activity);
-		
-		/*
-		 * The account type "com.google" matches all Google accounts.
-		 * In case of multiple accounts, the getAuthTokenByFeatures
-		 * function takes care of prompting the user for a choice.
-		 * 
-		 * The auth token type "Email" is a valid OAuth2 alias for
-		 * "oauth2:https://www.googleapis.com/auth/userinfo.email"
-		 * 
-		 * The eventually returned token is thus an OAuth2 token to be
-		 * used server-side to request the user's email address from
-		 * the GData API
-		 */
-		AccountManagerFuture<Bundle> future = manager.getAuthTokenByFeatures(
-				"com.google", "Email", null, activity, null, null, null, null);
-		Bundle bundle;
-		bundle = future.getResult();
-		
-		String accountName = bundle.getString(AccountManager.KEY_ACCOUNT_NAME);
-		String authToken = bundle.getString(AccountManager.KEY_AUTHTOKEN);
-		if (accountName == null || authToken == null)
-			throw new AuthenticatorException();
-		return new Account(accountName, authToken);
+
+	/**
+	 * Set a bonder that implements the {@link Bonder} interface
+	 */
+	public void setBonder(Bonder bonder) {
+		if (account == null)
+			throw new IllegalArgumentException("bonder can't be null");
+		this.bonder = bonder;
 	}
-	
-	class Account {
-		String accountName;
-		String authToken;
-		
-		public Account(String accountName, String authToken) {
-			this.accountName = accountName;
-			this.authToken = authToken;
-		}
-		
-		public String getAccountName() {
-			return accountName;
-		}
-		
-		public String getAuthToken() {
-			return authToken;
-		}
-	}
-	
-	public boolean login() {
-		return false;
-		
-	}
+
+	/**
+	 * Performs the bonding
+	 */
 	public boolean bond() {
-		bonder.createBond();
-		//...
+		bonder.getSecret();
+		// TODO send secret to server
 		return false;
 	}
+
+	/**
+	 * Get a stream for communication
+	 * 
+	 */
 	public DyadStream getStream() {
-		return null;
-		
-	}
-	
-	public static Dyad load(String s) {
-		return null;
-	}
-	
-	public String dump() {
+		// TODO
 		return null;
 	}
 }
