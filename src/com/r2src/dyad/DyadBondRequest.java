@@ -1,9 +1,11 @@
 package com.r2src.dyad;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpRequest;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.json.JSONException;
@@ -30,6 +32,13 @@ public class DyadBondRequest implements DyadRequest {
 	public HttpRequest getHttpRequest() {
 		// TODO authenticate request
 		return request;
+	}
+
+	@Override
+	public void onFinished(HttpResponse response, DyadAccount account)
+			throws DyadServerException, IOException {
+		// TODO parse response, instantiate Dyad
+
 	}
 
 }

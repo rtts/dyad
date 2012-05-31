@@ -6,14 +6,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
-import org.apache.http.ParseException;
-import org.apache.http.util.EntityUtils;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -32,7 +26,7 @@ import android.support.v4.content.LocalBroadcastManager;
  * return a new session token when that happens. This should be useful to
  * <ol>
  * <li>Update the c2dm_id when it has changed
- * <li>Refreshing the session token when it expires
+ * <li>Refresh the session token when it expires
  * <li>Transfer existing Dyad Accounts to new devices.
  * </ol>
  * All the methods of this class are non-blocking and safe to call from the UI
@@ -119,38 +113,7 @@ public class DyadAccount {
 			throw new IllegalArgumentException("c2dm_id is null");
 
 		DyadRequest request = new DyadRegistrationRequest(authToken, c2dm_id);
-		asyncRequest(request, foo, handler, new Bar() {
-
-			@Override
-			public void onFinished(HttpResponse response)
-					throws DyadServerException, IOException {
-				JSONObject body;
-				switch (response.getStatusLine().getStatusCode()) {
-
-				// account already registered
-				case 200:
-					break;
-
-				// new account created
-				case 201:
-					break;
-
-				// any kind of error
-				default:
-					throw new DyadServerException(response);
-				}
-
-				HttpEntity entity = response.getEntity();
-				try {
-					body = new JSONObject(EntityUtils.toString(entity));
-					sessionToken = body.getString("sessionToken");
-				} catch (ParseException e) {
-					throw new DyadServerException(e, response);
-				} catch (JSONException e) {
-					throw new DyadServerException(e, response);
-				}
-			}
-		});
+		asyncRequest(request, foo, handler);
 	}
 
 	/**
@@ -172,16 +135,16 @@ public class DyadAccount {
 			public void onReceive(Context context, Intent intent) {
 				final String secret = intent.getStringExtra("secret");
 				DyadRequest request = new DyadBondRequest(secret);
-				asyncRequest(request, foo, handler, new Bar() {
-
-					@Override
-					public void onFinished(HttpResponse response)
-							throws DyadServerException, IOException {
-
-						// TODO parse response, instantiate Dyad
-
-					}
-				});
+				try {
+					authenticate(request);
+				} catch (final NotRegisteredException e) {
+					handler.post(new Runnable() {
+						public void run() {
+							foo.onError(e);
+						}
+					});
+				}
+				asyncRequest(request, foo, handler);
 
 			}
 		}, new IntentFilter("com.r2src.dyad.action.GOT_SHARED_SECRET"));
@@ -194,10 +157,11 @@ public class DyadAccount {
 		return null;
 	}
 
-	public void authenticate(HttpRequest request) throws NotRegisteredException {
+	public void authenticate(DyadRequest request) throws NotRegisteredException {
 		if (sessionToken == null)
 			throw new NotRegisteredException();
-		request.addHeader("X-Dyad-Authentication", sessionToken.toString());
+		request.getHttpRequest().addHeader("X-Dyad-Authentication",
+				sessionToken.toString());
 	}
 
 	class NotRegisteredException extends Exception {
@@ -215,7 +179,7 @@ public class DyadAccount {
 	 * @param bar
 	 */
 	protected void asyncRequest(final DyadRequest request, final Foo foo,
-			final Handler handler, final Bar bar) {
+			final Handler handler) {
 		if (handler == null)
 			throw new IllegalArgumentException("handler is null");
 		if (foo == null)
@@ -227,7 +191,7 @@ public class DyadAccount {
 			public void run() {
 				try {
 					HttpResponse response = client.execute(host, request);
-					bar.onFinished(response);
+					request.onFinished(response, DyadAccount.this);
 					handler.post(new Runnable() {
 						public void run() {
 							foo.onFinished();
@@ -248,5 +212,9 @@ public class DyadAccount {
 				}
 			}
 		});
+	}
+
+	public void setSessionToken(String token) {
+		sessionToken = token;
 	}
 }

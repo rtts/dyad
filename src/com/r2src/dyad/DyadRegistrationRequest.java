@@ -5,14 +5,17 @@ import java.io.UnsupportedEncodingException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpRequest;
+import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Registers an account with the Dyad server. This is a blocking method,
- * which returns when the registration is complete.
+ * Registers an account with the Dyad server. This is a blocking method, which
+ * returns when the registration is complete.
  * 
  * @param authToken
  *            An auth token as returned by
@@ -26,19 +29,19 @@ import org.json.JSONObject;
  * </pre>
  * 
  *            The auth token type "Email" is a valid OAuth2 alias for
- *            "oauth2:https://www.googleapis.com/auth/userinfo.email".
- *            However, the Google Authenticator plugin thinks it's not...
+ *            "oauth2:https://www.googleapis.com/auth/userinfo.email". However,
+ *            the Google Authenticator plugin thinks it's not...
  * 
  * @param c2dm_id
- *            The C2DM registration id of this device. Needed to receive
- *            push messages.
+ *            The C2DM registration id of this device. Needed to receive push
+ *            messages.
  * 
  * @throws IOException
  *             Network trouble
  * 
  * @throws DyadServerException
- *             The server returned a response that cannot be parsed to a
- *             JSON object.
+ *             The server returned a response that cannot be parsed to a JSON
+ *             object.
  * 
  */
 public class DyadRegistrationRequest implements DyadRequest {
@@ -57,9 +60,40 @@ public class DyadRegistrationRequest implements DyadRequest {
 		}
 		request.setEntity(entity);
 	}
-	
+
 	@Override
 	public HttpRequest getHttpRequest() {
 		return request;
+	}
+
+	@Override
+	public void onFinished(HttpResponse response, DyadAccount account)
+			throws DyadServerException, IOException {
+
+		JSONObject body;
+		switch (response.getStatusLine().getStatusCode()) {
+
+		// account already registered
+		case 200:
+			break;
+
+		// new account created
+		case 201:
+			break;
+
+		// any kind of error
+		default:
+			throw new DyadServerException(response);
+		}
+
+		HttpEntity entity = response.getEntity();
+		try {
+			body = new JSONObject(EntityUtils.toString(entity));
+			account.setSessionToken(body.getString("sessionToken"));
+		} catch (ParseException e) {
+			throw new DyadServerException(e, response);
+		} catch (JSONException e) {
+			throw new DyadServerException(e, response);
+		}
 	}
 }
