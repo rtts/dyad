@@ -3,6 +3,10 @@ package com.r2src.dyad;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Intent;
+
 /**
  * A Dyad is a pair of individuals maintaining a socially significant
  * relationship. The prime purpose of a Dyad is to establish a peer-to-peer
@@ -42,10 +46,12 @@ public abstract class Dyad {
 	}
 
 	/**
-	 * Performs the bonding
+	 * Performs the bonding. Starts an activity that the specific bonder
+	 * implementation can use to find a shared secret and pass this to the
+	 * server.
 	 */
-	public boolean bond() {
-		bonder.getSecret();
+	public boolean bond(Activity activity) {
+		activity.startActivity(new Intent(activity, bonder.getClass()));
 		// TODO send secret to server
 		return false;
 	}

@@ -20,12 +20,7 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.accounts.Account;
-import android.accounts.AccountManager;
-import android.accounts.AuthenticatorException;
-import android.accounts.OperationCanceledException;
 import android.os.Handler;
-import android.util.Log;
 
 /**
  * An account with most of its state stored server-side. Once registered, it
@@ -34,32 +29,45 @@ import android.util.Log;
  * the UUID it can be used to track your significant other)
  * <p>
  * Dyad Server API version 1 accepts re-registration of an account and will
- * return an existing UUID when that happens. (This should be useful to transfer
- * existing Dyad Accounts to new devices.)
+ * return an existing UUID when that happens. This should be useful to transfer
+ * existing Dyad Accounts to new devices.
  */
 public class DyadAccount {
+	static HttpClient client = new DefaultHttpClient();
+
 	private final HttpHost host;
-	private final int apiVersion;
 	private UUID uuid;
 	private final ExecutorService executor = Executors.newCachedThreadPool();
-	private final HttpClient client = new DefaultHttpClient();
+	// private final HttpClient client = new DefaultHttpClient();
+	private static final String REGISTRATION_URI = "/v1/register";
 
-	public DyadAccount(HttpHost host, int apiVersion) {
-		this(host, apiVersion, null);
+	/**
+	 * Creates a local account that has not been registered with the server.
+	 */
+	public DyadAccount(HttpHost host) {
+		this(host, null);
 	}
 
 	/**
+	 * Creates an account that has already been registered with the server.
+	 * 
 	 * @param host
 	 *            The host that runs Dyad Server.
 	 * @param apiVersion
 	 *            The api version of the Dyad Server.
 	 * @param uuid
-	 *            The UUID of an exisisting Dyad Account (may be null).
+	 *            The UUID of an existing Dyad Account (may be null).
 	 */
-	public DyadAccount(HttpHost host, int apiVersion, UUID uuid) {
+	public DyadAccount(HttpHost host, UUID uuid) {
 		this.host = host;
-		this.apiVersion = apiVersion;
 		this.uuid = uuid;
+	}
+
+	/**
+	 * Returns the host for this account
+	 */
+	public HttpHost getHost() {
+		return host;
 	}
 
 	/**
@@ -73,72 +81,50 @@ public class DyadAccount {
 	 * Registers an account with the Dyad server. This is a blocking method,
 	 * which returns when the registration is complete.
 	 * 
-	 * @param account
-	 *            An Android account that will be used for authentication.
+	 * @param authToken
+	 *            An auth token as returned by
 	 * 
-	 * @param manager
-	 *            An {@link AccountManager} object.
+	 *            <pre>
+	 * AccountManagerFuture&lt;Bundle&gt; future = manager.getAuthTokenByFeatures(
+	 * 		&quot;com.google&quot;, &quot;oauth2:https://www.googleapis.com/auth/userinfo.email&quot;,
+	 * 		null, activity, null, null, null, null);
+	 * Bundle bundle = future.getResult(); // blocking call
+	 * authToken = bundle.getString(AccountManager.KEY_AUTHTOKEN);
+	 * </pre>
 	 * 
-	 *            TODO: Stop the accounts stuff and just ask for a Context.
+	 *            The auth token type "Email" is a valid OAuth2 alias for
+	 *            "oauth2:https://www.googleapis.com/auth/userinfo.email".
+	 *            However, the Google Authenticator plugin thinks it's not...
 	 * 
 	 * @param c2dm_id
 	 *            The C2DM registration id of this device. Needed to receive
 	 *            push messages.
 	 * 
-	 * @throws OperationCanceledException
-	 *             If the operation is canceled for any reason, including the
-	 *             user canceling a credential request.
-	 * 
-	 * @throws AuthenticatorException
-	 *             Don't look at us. It's not our fault.
-	 * 
 	 * @throws IOException
-	 *             The authenticator experienced an I/O problem creating a new
-	 *             auth token.
-	 * 
-	 * @throws WrongAccountTypeException
-	 *             The supplied account is not of type "com.google".
+	 *             Network trouble
 	 * 
 	 * @throws DyadServerException
 	 *             The server returned a response that cannot be parsed to a
 	 *             JSON object.
 	 * 
 	 */
-	public void register(Account account, AccountManager manager, String c2dm_id)
-			throws OperationCanceledException, AuthenticatorException,
-			IOException, WrongAccountTypeException, DyadServerException {
-		if (account == null)
-			throw new IllegalArgumentException("account is null");
-		if (manager == null)
-			throw new IllegalArgumentException("manager is null");
+	public void register(String authToken, String c2dm_id)
+			throws DyadServerException, IOException {
+		if (authToken == null)
+			throw new IllegalArgumentException("authToken is null");
+		if ("".equals(authToken))
+			throw new IllegalArgumentException("authToken is empty");
 		if (c2dm_id == null)
 			throw new IllegalArgumentException("c2dm_id is null");
-		if (account.type != "com.google")
-			throw new WrongAccountTypeException();
+		if ("".equals(c2dm_id))
+			throw new IllegalArgumentException("c2dm_id is empty");
 
-		Log.d(this.getClass().getName(), "Requesting auth token for "
-				+ account.name);
+		DyadClient client = DyadClient.getInstance();
 
-		/*
-		 * The auth token type "Email" is a valid OAuth2 alias for
-		 * "oauth2:https://www.googleapis.com/auth/userinfo.email". However, the
-		 * Google Authenticator plugin thinks it's not...
-		 */
-		String authToken = manager.blockingGetAuthToken(account,
-				"oauth2:https://www.googleapis.com/auth/userinfo.email", false);
-
-		if (authToken == null || authToken == "")
-			throw new AuthenticatorException();
-		else
-			Log.d(this.getClass().getName(),
-					"Successfully retrieved auth token");
-
-		// TODO: design cooler way to describe WebApi interface
-		HttpPost request = new HttpPost(WebApiV1.getUrl("register"));
+		HttpPost request = new HttpPost(REGISTRATION_URI);
 		JSONObject body = new JSONObject();
 		try {
-			body.put("token", authToken);
-			body.put("c2dm_id", c2dm_id);
+			body.put("token", authToken).put("c2dm_id", c2dm_id);
 		} catch (JSONException e) {
 			// this will never happen
 			throw new RuntimeException(e);
@@ -184,12 +170,10 @@ public class DyadAccount {
 	 * @param foo
 	 * @param handler
 	 */
-	public void register(final Account account, final AccountManager manager,
-			final String c2dm_id, final Foo foo, final Handler handler) {
-		if (account == null)
-			throw new IllegalArgumentException("account is null");
-		if (manager == null)
-			throw new IllegalArgumentException("manager is null");
+	public void register(final String authToken, final String c2dm_id,
+			final Foo foo, final Handler handler) {
+		if (authToken == null)
+			throw new IllegalArgumentException("authToken is null");
 		if (foo == null)
 			throw new IllegalArgumentException("foo is null");
 		if (handler == null)
@@ -202,22 +186,10 @@ public class DyadAccount {
 			@Override
 			public void run() {
 				try {
-					register(account, manager, c2dm_id);
+					register(authToken, c2dm_id);
 					handler.post(new Runnable() {
 						public void run() {
 							foo.onFinished();
-						}
-					});
-				} catch (final AuthenticatorException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							foo.onError(e);
-						}
-					});
-				} catch (final WrongAccountTypeException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							foo.onError(e);
 						}
 					});
 				} catch (final IOException e) {
@@ -230,12 +202,6 @@ public class DyadAccount {
 					handler.post(new Runnable() {
 						public void run() {
 							foo.onError(e);
-						}
-					});
-				} catch (final OperationCanceledException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							foo.onCanceled();
 						}
 					});
 				}
@@ -256,10 +222,6 @@ public class DyadAccount {
 	}
 
 	class NotRegisteredException extends Exception {
-		private static final long serialVersionUID = 1L;
-	}
-
-	class WrongAccountTypeException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
 }

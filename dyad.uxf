@@ -5,205 +5,24 @@
     <type>com.umlet.element.Class</type>
     <coordinates>
       <x>45</x>
-      <y>90</y>
-      <w>189</w>
-      <h>135</h>
-    </coordinates>
-    <panel_attributes>*&lt;&lt;Interface&gt;&gt;*
-*DyadComponentFactory*
---
-/createServer()/
-/createRegistration()/
-/createLogin()/
-/createPushReceiver()/
-/createBond()/
-/createStream()/</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Relation</type>
-    <coordinates>
-      <x>108</x>
-      <y>198</y>
-      <w>36</w>
-      <h>135</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
-    <additional_attributes>27;27;27;126</additional_attributes>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>0</x>
-      <y>324</y>
-      <w>234</w>
-      <h>117</h>
-    </coordinates>
-    <panel_attributes>*SimpleDyadComponentFactory*
---
-createServer()
-createRegistration()
-createLogin()
-createPushReceiver()
-createBond()
-createStream()</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>297</x>
-      <y>0</y>
-      <w>90</w>
-      <h>27</h>
-    </coordinates>
-    <panel_attributes>*Dyad*</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Relation</type>
-    <coordinates>
-      <x>108</x>
-      <y>0</y>
-      <w>243</w>
-      <h>99</h>
-    </coordinates>
-    <panel_attributes>lt=&gt;</panel_attributes>
-    <additional_attributes>234;27;234;36;27;36;27;90</additional_attributes>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>243</x>
-      <y>90</y>
-      <w>288</w>
+      <y>288</y>
+      <w>171</w>
       <h>90</h>
-    </coordinates>
-    <panel_attributes>*/Server/*
---
-address: URI
---
-Server(address: URI)
-getAddress(): URI
-send(req: Request, runnable: Runnable)
-</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>243</x>
-      <y>189</y>
-      <w>288</w>
-      <h>63</h>
-    </coordinates>
-    <panel_attributes>*/Registration/*
---
-/createAndSaveCredentials(): Credentials/
-/createRequest(cred: Credentails): Request/</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>243</x>
-      <y>261</y>
-      <w>288</w>
-      <h>72</h>
-    </coordinates>
-    <panel_attributes>*/Login/*
---
-/getCredentials(): Credentials/
-/createRequest(cred: Credentials): Request/
-/request(req: Request): SessionID/</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>243</x>
-      <y>414</y>
-      <w>90</w>
-      <h>27</h>
-    </coordinates>
-    <panel_attributes>/PushReceiver/
-</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>243</x>
-      <y>495</y>
-      <w>90</w>
-      <h>27</h>
-    </coordinates>
-    <panel_attributes>/Bond/
-</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>243</x>
-      <y>576</y>
-      <w>90</w>
-      <h>27</h>
-    </coordinates>
-    <panel_attributes>/Stream/
-</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>594</x>
-      <y>189</y>
-      <w>288</w>
-      <h>63</h>
-    </coordinates>
-    <panel_attributes>*GoogleOAuthRegistration*
---
-createAndSaveCredentials(): Credentials
-createRequest(cred: Credentails): Request</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <type>com.umlet.element.Relation</type>
-    <coordinates>
-      <x>504</x>
-      <y>198</y>
-      <w>99</w>
-      <h>36</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
-    <additional_attributes>27;27;90;27</additional_attributes>
-  </element>
-  <element>
-    <type>com.umlet.element.Class</type>
-    <coordinates>
-      <x>810</x>
-      <y>378</y>
-      <w>198</w>
-      <h>135</h>
     </coordinates>
     <panel_attributes>Dyad
 --
 bonder: Bonder
 --
-#load(s: String): Dyad
-dump(): String
-register(): boolean
-login(): boolean
 bond(): boolean
-getStream(): DyadStream</panel_attributes>
+getStream(): DyadStream
+setBonder(b: Bonder)</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>1161</x>
-      <y>531</y>
+      <x>396</x>
+      <y>441</y>
       <w>108</w>
       <h>45</h>
     </coordinates>
@@ -215,8 +34,8 @@ createBond()</panel_attributes>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>1161</x>
-      <y>396</y>
+      <x>396</x>
+      <y>306</y>
       <w>108</w>
       <h>63</h>
     </coordinates>
@@ -229,8 +48,8 @@ Bonder
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>1179</x>
-      <y>432</y>
+      <x>414</x>
+      <y>342</y>
       <w>44</w>
       <h>116</h>
     </coordinates>
@@ -240,23 +59,39 @@ Bonder
   <element>
     <type>com.umlet.element.Relation</type>
     <coordinates>
-      <x>981</x>
-      <y>396</y>
-      <w>197</w>
+      <x>189</x>
+      <y>306</y>
+      <w>224</w>
       <h>44</h>
     </coordinates>
     <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>180;27;27;27</additional_attributes>
+    <additional_attributes>207;27;27;27</additional_attributes>
   </element>
   <element>
     <type>com.umlet.element.Class</type>
     <coordinates>
-      <x>1161</x>
-      <y>612</y>
+      <x>396</x>
+      <y>522</y>
       <w>90</w>
       <h>27</h>
     </coordinates>
     <panel_attributes>DyadStream</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Class</type>
+    <coordinates>
+      <x>387</x>
+      <y>90</y>
+      <w>117</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>DyadAccount
+--
+
+--
+register()
+getDyads()</panel_attributes>
     <additional_attributes/>
   </element>
 </diagram>
