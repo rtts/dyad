@@ -35,9 +35,10 @@ public class DyadClient {
 		return singleton;
 	}
 
-	public HttpResponse execute(HttpHost host, HttpRequest request)
-			throws ClientProtocolException, IOException {
-		return client.execute(host, request);
+	public HttpResponse execute(HttpHost host, DyadRequest request)
+			throws DyadServerException, IOException, ClientProtocolException {
+		HttpRequest httpRequest = request.getHttpRequest();
+		return client.execute(host, httpRequest);
 	}
 
 }

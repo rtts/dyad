@@ -4,7 +4,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
 
 /**
@@ -21,7 +20,7 @@ import android.content.Intent;
  * A fully operational Dyad can be used to request a {@link DyadStream} object
  * by calling {@link #getStream}.
  */
-public abstract class Dyad {
+public class Dyad {
 	private DyadAccount account;
 	private Bonder bonder;
 	private final ExecutorService exec = Executors.newCachedThreadPool();
@@ -50,12 +49,12 @@ public abstract class Dyad {
 	 * implementation can use to find a shared secret and pass this to the
 	 * server.
 	 */
-	public boolean bond(Activity activity) {
+	public void bond(Activity activity, Foo foo) {
 		activity.startActivity(new Intent(activity, bonder.getClass()));
 		// TODO send secret to server
-		return false;
+		
 	}
-
+	
 	/**
 	 * Get a stream for communication
 	 * 

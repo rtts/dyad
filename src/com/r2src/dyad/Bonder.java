@@ -8,5 +8,5 @@ import android.app.Activity;
  * way to contact the other device and exchange a secret string.
  */
 public abstract class Bonder extends Activity {
-	public abstract String getSecret(Activity activity);
+	public abstract String getSecret();
 }
