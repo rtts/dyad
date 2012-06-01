@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.ParseException;
 import org.apache.http.client.methods.HttpPost;
@@ -14,40 +13,28 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Registers an account with the Dyad server. This is a blocking method, which
- * returns when the registration is complete.
- * 
- * @param authToken
- *            An auth token as returned by
- * 
- *            <pre>
- * AccountManagerFuture&lt;Bundle&gt; future = manager.getAuthTokenByFeatures(
- * 		&quot;com.google&quot;, &quot;oauth2:https://www.googleapis.com/auth/userinfo.email&quot;,
- * 		null, activity, null, null, null, null);
- * Bundle bundle = future.getResult(); // blocking call
- * authToken = bundle.getString(AccountManager.KEY_AUTHTOKEN);
- * </pre>
- * 
- *            The auth token type "Email" is a valid OAuth2 alias for
- *            "oauth2:https://www.googleapis.com/auth/userinfo.email". However,
- *            the Google Authenticator plugin thinks it's not...
- * 
- * @param c2dm_id
- *            The C2DM registration id of this device. Needed to receive push
- *            messages.
- * 
- * @throws IOException
- *             Network trouble
- * 
- * @throws DyadServerException
- *             The server returned a response that cannot be parsed to a JSON
- *             object.
- * 
+ * A request to register an account with the Dyad Server. Also valid for already
+ * registered accounts.
  */
-public class DyadRegistrationRequest implements DyadRequest {
-	private HttpPost request = new HttpPost("/v1/register");
+public class DyadRegistrationRequest extends DyadRequest {
 
+	private static final String PATH = "/v1/register";
+
+	/**
+	 * Creates a new registration request.
+	 * 
+	 * @param authToken
+	 *            An OAuth2 token with the following scope:
+	 *            "oauth2:https://www.googleapis.com/auth/userinfo.email"
+	 * 
+	 *            The auth token type "Email" is a valid alias for this.
+	 *            However, the Google Authenticator plugin thinks it's not...
+	 * 
+	 * @param c2dm_id
+	 *            The C2DM registration id of the device.
+	 */
 	public DyadRegistrationRequest(String authToken, String c2dm_id) {
+		request = new HttpPost(PATH);
 		JSONObject body = new JSONObject();
 		HttpEntity entity;
 		try {
@@ -58,14 +45,15 @@ public class DyadRegistrationRequest implements DyadRequest {
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
 		}
-		request.setEntity(entity);
+		((HttpPost) request).setEntity(entity);
 	}
 
-	@Override
-	public HttpRequest getHttpRequest() {
-		return request;
-	}
-
+	/**
+	 * Nothing, really.
+	 * 
+	 * TODO: Invent some kind of middleware to filter out and store the session
+	 * token
+	 */
 	@Override
 	public void onFinished(HttpResponse response, DyadAccount account)
 			throws DyadServerException, IOException {

@@ -11,6 +11,9 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.HttpParams;
 
+/**
+ * A client to execute {@link DyadRequest}s.
+ */
 public class DyadClient {
 
 	private volatile static DyadClient singleton;

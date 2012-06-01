@@ -30,9 +30,10 @@ import android.support.v4.content.LocalBroadcastManager;
  * <li>Transfer existing Dyad Accounts to new devices.
  * </ol>
  * All the methods of this class are non-blocking and safe to call from the UI
- * thread
+ * thread.
  */
 public class DyadAccount {
+
 	private final HttpHost host;
 	private String sessionToken;
 	private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -77,6 +78,13 @@ public class DyadAccount {
 	}
 
 	/**
+	 * Sets the account's session token.
+	 */
+	public void setSessionToken(String token) {
+		sessionToken = token;
+	}
+
+	/**
 	 * Registers the account with the Dyad server.
 	 * 
 	 * @param authToken
@@ -89,10 +97,6 @@ public class DyadAccount {
 	 * Bundle bundle = future.getResult(); // blocking call
 	 * authToken = bundle.getString(AccountManager.KEY_AUTHTOKEN);
 	 * </pre>
-	 * 
-	 *            (The auth token type "Email" is a valid OAuth2 alias for
-	 *            "oauth2:https://www.googleapis.com/auth/userinfo.email".
-	 *            However, the Google Authenticator plugin thinks it's not...)
 	 * 
 	 * @param c2dm_id
 	 *            The C2DM registration id of this device. Needed to receive
@@ -125,7 +129,6 @@ public class DyadAccount {
 	 * <p>
 	 * When the server receives two matching secrets, the Dyad is complete TODO
 	 */
-
 	public void requestDyad(Activity activity, Bonder bonder, final Foo foo,
 			final Handler handler) {
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(activity);
@@ -152,11 +155,25 @@ public class DyadAccount {
 		activity.startActivity(new Intent(activity, bonder.getClass()));
 	}
 
+	/**
+	 * Fetches the list of Dyads from the server.
+	 */
 	public Future<List<Dyad>> getDyads() {
 		// TODO: method stub
 		return null;
 	}
 
+	/**
+	 * Authenticates a {@link DyadRequest} by adding a custom header containing
+	 * the session token.
+	 * 
+	 * @param request
+	 *            The request to be authenticated.
+	 * 
+	 * @throws NotRegisteredException
+	 *             If there is no session token. Handle this by calling
+	 *             {@link #register} first.
+	 */
 	public void authenticate(DyadRequest request) throws NotRegisteredException {
 		if (sessionToken == null)
 			throw new NotRegisteredException();
@@ -164,21 +181,14 @@ public class DyadAccount {
 				sessionToken.toString());
 	}
 
-	class NotRegisteredException extends Exception {
+	private class NotRegisteredException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
 
-/**
-	 * Helper function to spawn a worker thread making the web api request.
-	 * 
-	 * @param request
-	 *     A {@link DyadRequest) to be performed.
-	 * @param foo
-	 *     A 
-	 * @param handler
-	 * @param bar
+	/**
+	 * Helper method to spawn a worker thread making the web api request.
 	 */
-	protected void asyncRequest(final DyadRequest request, final Foo foo,
+	private void asyncRequest(final DyadRequest request, final Foo foo,
 			final Handler handler) {
 		if (handler == null)
 			throw new IllegalArgumentException("handler is null");
@@ -212,9 +222,5 @@ public class DyadAccount {
 				}
 			}
 		});
-	}
-
-	public void setSessionToken(String token) {
-		sessionToken = token;
 	}
 }
