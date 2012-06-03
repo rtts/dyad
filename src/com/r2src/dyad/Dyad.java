@@ -3,9 +3,6 @@ package com.r2src.dyad;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import android.app.Activity;
-import android.content.Intent;
-
 /**
  * A Dyad is a pair of individuals maintaining a socially significant
  * relationship. The prime purpose of a Dyad is to establish a peer-to-peer
@@ -22,7 +19,6 @@ import android.content.Intent;
  */
 public class Dyad {
 	private DyadAccount account;
-	private Bonder bonder;
 	private final ExecutorService exec = Executors.newCachedThreadPool();
 
 	/**
@@ -33,26 +29,6 @@ public class Dyad {
 		if (account == null)
 			throw new IllegalArgumentException("account can't be null");
 		this.account = account;
-	}
-
-	/**
-	 * Set a bonder that implements the {@link Bonder} interface
-	 */
-	public void setBonder(Bonder bonder) {
-		if (account == null)
-			throw new IllegalArgumentException("bonder can't be null");
-		this.bonder = bonder;
-	}
-
-	/**
-	 * Performs the bonding. Starts an activity that the specific bonder
-	 * implementation can use to find a shared secret and pass this to the
-	 * server.
-	 */
-	public void bond(Activity activity, Foo foo) {
-		activity.startActivity(new Intent(activity, bonder.getClass()));
-		// TODO send secret to server
-		
 	}
 	
 	/**
