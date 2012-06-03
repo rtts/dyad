@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Base64;
 
 import com.bump.api.BumpAPIIntents;
 import com.bump.api.IBumpAPI;
@@ -35,13 +36,13 @@ public abstract class BumpBonder extends Bonder {
 					api.send(intent.getLongExtra("channelID", 0), myPart);
 				} else if (action.equals(BumpAPIIntents.DATA_RECEIVED)) {
 					byte[] otherPart = intent.getByteArrayExtra("data");
-					setSharedSecret(combine(myPart, otherPart));
+					setSharedSecret(Base64.encodeToString(
+							combine(myPart, otherPart), Base64.URL_SAFE));
 				}
 			} catch (RemoteException e) {
 			}
 		}
 
-		
 	};
 
 	private final ServiceConnection connection = new ServiceConnection() {
@@ -81,14 +82,17 @@ public abstract class BumpBonder extends Bonder {
 		unbindService(connection);
 		unregisterReceiver(receiver);
 	}
-	
+
 	// XORs the two byte arrays. They should be of equal length.
 	private byte[] combine(byte[] myPart, byte[] otherPart) {
-		if(myPart.length != otherPart.length) throw new IllegalArgumentException("arrays should be of equal length");
-		
+		if (myPart.length != otherPart.length)
+			throw new IllegalArgumentException(
+					"arrays should be of equal length");
+
 		byte[] result = new byte[myPart.length];
-		for (int i=0; i<myPart.length; i++)
+		for (int i = 0; i < result.length; i++)
 			result[i] = (byte) (myPart[i] ^ otherPart[i]);
+
 		return result;
 	}
 

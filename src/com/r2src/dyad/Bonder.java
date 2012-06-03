@@ -13,7 +13,7 @@ public abstract class Bonder extends Activity {
 	 * Sends a broadcast to let 'observers' know that the secret was found.
 	 * @param secret The shared secret that the two devices have calculated
 	 */
-	protected void setSharedSecret(byte[] secret) {
+	protected void setSharedSecret(String secret) {
 		Intent i = new Intent()
 				.setAction("com.r2src.dyad.action.GOT_SHARED_SECRET")
 				.putExtra("secret", secret);
