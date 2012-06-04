@@ -1,7 +1,6 @@
 package com.r2src.dyad;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import android.os.Handler;
 
 /**
  * A Dyad is a pair of individuals maintaining a socially significant
@@ -19,7 +18,6 @@ import java.util.concurrent.Executors;
  */
 public class Dyad {
 	private DyadAccount account;
-	private final ExecutorService exec = Executors.newCachedThreadPool();
 
 	/**
 	 * Protected constructor -- call {@link DyadAccount.newDyad()} to create a
@@ -35,8 +33,9 @@ public class Dyad {
 	 * Get a stream for communication
 	 * 
 	 */
-	public DyadStream getStream() {
-		// TODO
-		return null;
+	public void getStream(Foo foo, Handler handler) {
+		// TODO method stub
+		DyadRequest request = new DyadStreamRequest();
+		account.client.asyncRequest(request, account, foo, handler);
 	}
 }

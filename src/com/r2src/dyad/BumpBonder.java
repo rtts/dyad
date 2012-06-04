@@ -15,6 +15,18 @@ import android.util.Base64;
 import com.bump.api.BumpAPIIntents;
 import com.bump.api.IBumpAPI;
 
+/**
+ * Lets two devices calculate a shared secret by sending each other parts of the
+ * secret over a BUMP channel. The BUMP channel is created when two devices
+ * 'bump'.
+ * 
+ * If you want to use this bonder, subclass it and override {@link 
+ * {@link #getBumpApiKey()} and {@link #getBumpUserName()}. The ApiKey is the
+ * key you have received from BUMP, the username can be device-specific. It can
+ * be something like the device-id, a username that the user has registered
+ * with, or the google account name. It is only used for the BUMP logs.
+ * 
+ */
 public abstract class BumpBonder extends Bonder {
 	private IBumpAPI api;
 	private byte[] myPart = new byte[SECRET_LENGTH];

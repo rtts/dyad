@@ -10,8 +10,8 @@ import android.content.Intent;
  */
 public abstract class Bonder extends Activity {
 	/**
-	 * Sends a broadcast to let 'observers' know that the secret was found.
-	 * @param secret The shared secret that the two devices have calculated
+	 * Sends a broadcast to let receivers know that the secret was found.
+	 * @param secret The shared secret that the two devices have decided upon.
 	 */
 	protected void setSharedSecret(String secret) {
 		Intent i = new Intent()

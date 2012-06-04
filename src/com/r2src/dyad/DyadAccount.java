@@ -1,13 +1,9 @@
 package com.r2src.dyad;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -34,10 +30,9 @@ import android.support.v4.content.LocalBroadcastManager;
  */
 public class DyadAccount {
 
-	private final HttpHost host;
+	public final HttpHost host;
 	private String sessionToken;
-	private final ExecutorService executor = Executors.newCachedThreadPool();
-	private DyadClient client = DyadClient.getInstance();
+	public DyadClient client = DyadClient.getInstance();
 
 	/**
 	 * Creates a local account that has not yet been registered with the server.
@@ -117,7 +112,7 @@ public class DyadAccount {
 			throw new IllegalArgumentException("c2dm_id is null");
 
 		DyadRequest request = new DyadRegistrationRequest(authToken, c2dm_id);
-		asyncRequest(request, foo, handler);
+		client.asyncRequest(request, this, foo, handler);
 	}
 
 	/**
@@ -147,7 +142,7 @@ public class DyadAccount {
 						}
 					});
 				}
-				asyncRequest(request, foo, handler);
+				client.asyncRequest(request, DyadAccount.this, foo, handler);
 
 			}
 		}, new IntentFilter("com.r2src.dyad.action.GOT_SHARED_SECRET"));
@@ -185,42 +180,4 @@ public class DyadAccount {
 		private static final long serialVersionUID = 1L;
 	}
 
-	/**
-	 * Helper method to spawn a worker thread making the web api request.
-	 */
-	private void asyncRequest(final DyadRequest request, final Foo foo,
-			final Handler handler) {
-		if (handler == null)
-			throw new IllegalArgumentException("handler is null");
-		if (foo == null)
-			throw new IllegalArgumentException("foo is null");
-
-		// thread magic!
-		executor.submit(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					HttpResponse response = client.execute(host, request);
-					request.onFinished(response, DyadAccount.this);
-					handler.post(new Runnable() {
-						public void run() {
-							foo.onFinished();
-						}
-					});
-				} catch (final IOException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							foo.onError(e);
-						}
-					});
-				} catch (final DyadServerException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							foo.onError(e);
-						}
-					});
-				}
-			}
-		});
-	}
 }
