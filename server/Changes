@@ -1,6 +1,5 @@
-Revision history for Perl extension Dyad::Server.
+Revision history for Dyad-Server
 
-0.01  Tue Jun  5 15:22:57 2012
-	- original version; created by h2xs 1.23 with options
-		-AXc -n Dyad::Server
+0.01    Date/time
+        First version, released on an unsuspecting world.
 

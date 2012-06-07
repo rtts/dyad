@@ -1,40 +1,42 @@
 package Dyad::Server;
 
-use 5.014002;
+use 5.006;
 use strict;
 use warnings;
 use FCGI;
 use JSON;
 
-#require Exporter;
-#
-#our @ISA = qw(Exporter);
-#
-## Items to export into callers namespace by default. Note: do not export
-## names by default without a very good reason. Use EXPORT_OK instead.
-## Do not simply export all your public functions/methods/constants.
-#
-## This allows declaration	use Dyad::Server ':all';
-## If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
-## will save memory.
-#our %EXPORT_TAGS = (
-#	'all' => [
-#		qw(
-#
-#		  )
-#	]
-#);
-#
-#our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = qw(
 
-);
+=head1 NAME
 
-# TODO: Use Error.pm to throw exceptions!
+Dyad::Server - The great new Dyad::Server!
 
+=head1 VERSION
+
+Version 0.01
+
+=cut
 
 our $VERSION = '0.01';
+
+
+=head1 SYNOPSIS
+
+Quick summary of what the module does.
+
+Perhaps a little code snippet.
+
+    use Dyad::Server;
+
+    my $foo = Dyad::Server->new();
+    ...
+
+=head1 SUBROUTINES/METHODS
+
+=head2 new
+
+=cut
 
 my $Routing_table = { '/register' => \&register };
 
@@ -99,56 +101,62 @@ sub respond {
 	return "Status: $status\r\nContent-type: text/plain\r\n\r\n$body";
 }
 
-1;
-__END__
-# Below is stub documentation for your module. You'd better edit it!
 
-=head1 NAME
-
-Dyad::Server - Perl extension for blah blah blah
-
-=head1 SYNOPSIS
-
-  use Dyad::Server;
-  my $server = Dyad::Server->new("127.0.0.1:8000");
-  $server->start();
-  
-=head1 DESCRIPTION
-
-Stub documentation for Dyad::Server, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
-
-=head2 EXPORT
-
-None by default.
-
-
-
-=head1 SEE ALSO
-
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
 
 =head1 AUTHOR
 
-Jolanda Verhoef, E<lt>lojanda@E<gt>
+Return to the Source, C<< <info at r2src.com> >>
 
-=head1 COPYRIGHT AND LICENSE
+=head1 BUGS
 
-Copyright (C) 2012 by Jolanda Verhoef
+Please report any bugs or feature requests to C<bug-dyad-server at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Dyad-Server>.  I will be notified, and then you'll
+automatically be notified of progress on your bug as I make changes.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.14.2 or,
-at your option, any later version of Perl 5 you may have available.
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc Dyad::Server
+
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker (report bugs here)
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Dyad-Server>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Dyad-Server>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Dyad-Server>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Dyad-Server/>
+
+=back
+
+
+=head1 ACKNOWLEDGEMENTS
+
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2012 Return to the Source.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information.
 
 
 =cut
+
+1; # End of Dyad::Server

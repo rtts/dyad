@@ -1,12 +1,20 @@
-use 5.014002;
+use 5.006;
+use strict;
+use warnings;
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+
 WriteMakefile(
-    NAME              => 'Dyad::Server',
-    VERSION_FROM      => 'lib/Dyad/Server.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Dyad/Server.pm', # retrieve abstract from module
-       AUTHOR         => 'Jolanda Verhoef <lojanda@>') : ()),
+    NAME                => 'Dyad::Server',
+    AUTHOR              => q{Return to the Source <info@r2src.com>},
+    VERSION_FROM        => 'lib/Dyad/Server.pm',
+    ABSTRACT_FROM       => 'lib/Dyad/Server.pm',
+    ($ExtUtils::MakeMaker::VERSION >= 6.3002
+      ? ('LICENSE'=> 'perl')
+      : ()),
+    PL_FILES            => {},
+    PREREQ_PM => {
+        'Test::More' => 0,
+    },
+    dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
+    clean               => { FILES => 'Dyad-Server-*' },
 );
