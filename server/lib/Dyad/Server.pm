@@ -5,8 +5,12 @@ use strict;
 use warnings;
 use FCGI;
 use JSON;
+use Try::Tiny;
+use HTTP::Status qw(:constants status_message);
 
-
+require Exporter;
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw(run register get_body http_response);
 
 =head1 NAME
 
@@ -19,7 +23,6 @@ Version 0.01
 =cut
 
 our $VERSION = '0.01';
-
 
 =head1 SYNOPSIS
 
@@ -43,65 +46,81 @@ my $Routing_table = { '/register' => \&register };
 sub respond;
 sub get_body;
 
-sub new {
-	my $class = shift;
-	my $self  = {};
-	$self->{SOCKET} = FCGI::OpenSocket( shift, 100 );
-	$self->{REQUEST} =
-	  FCGI::Request( \*STDIN, \*STDOUT, \*STDERR, \%ENV, $self->{SOCKET} );
-	bless $self, $class;
-	return $self;
-}
+=head2 run
 
-sub DESTROY {
-	my $self = shift;
-	FCGI::CloseSocket $self->{SOCKET};
-}
+Main function of this module. Starts the Dyad FCGI server on the specified host and port.
+This call should never return, but make sure to run a process manager anyway!
+
+=cut
 
 sub run {
-	my $self = shift;
-  client: while ( $self->{REQUEST}->Accept() >= 0 ) {
+	my $socket = FCGI::OpenSocket( shift, 100 );
+	my $request = FCGI::Request( \*STDIN, \*STDOUT, \*STDERR, \%ENV, $socket );
+
+	while ( $request->Accept() >= 0 ) {
 
 		#print "Content-type: text/plain\r\n\r\n";
-
 		#for ( keys %ENV ) {
 		#	print "$_: $ENV{$_}\n";
 		#}
+
 		my $func = $Routing_table->{ $ENV{REQUEST_URI} };
-		respond 404, "unknown API request" if not $func;
-		print $func->();
+		print http_response HTTP_NOT_FOUND, "unknown API request" if not $func;
+		print http_response $func->();
 	}
 }
 
 sub register {
-	return respond 405, "expecting POST request"
+	return 405, "expecting POST request"
 	  if not $ENV{'REQUEST_METHOD'} eq 'POST';
-	my $result = get_body;
+	( my $body, my $message ) = get_body;
+	return 400, $message if not defined $body;
 
-	my $token   = $_->{"token"}   or respond 422, "token missing";
-	my $c2dm_id = $_->{"c2dm_id"} or respond 422, "c2dm_id missing";
+	my $token   = $body->{"token"}   or return 422, "token missing";
+	my $c2dm_id = $body->{"c2dm_id"} or return 422, "c2dm_id missing";
 
 }
 
+=head2 get_body
+
+Reads the body from the standard input in a cgi context, decodes and returns it as json.
+On error, returns a list of which the first value is undefined, and the second is a string
+that describes the error.
+
+=cut
+
 sub get_body {
-	return respond 400, "no body found in request"
+	return undef, "no body found in request"
 	  if not $ENV{'CONTENT_LENGTH'};
 
 	my $length = read( STDIN, my $body, $ENV{'CONTENT_LENGTH'} );
-	return respond 400, "reported content length does not match actual length"
+	return undef, "reported content length does not match actual length"
 	  if $ENV{'CONTENT_LENGTH'} != $length;
 
-	return ( ( decode_json $body)
-		  or ( respond 400, "json could not be decoded" ) );
+	try {
+		return decode_json $body;
+	}
+	catch {
+		return undef, "json could not be decoded";
+	}
 }
 
-sub respond {
-	my $status = shift;
-	my $body   = shift;
-	return "Status: $status\r\nContent-type: text/plain\r\n\r\n$body";
+=head2 http_response
+
+Returns an http response string given an http status code and an optional
+response body. Will return 500 Internal Server Error response if the status
+code is omitted or invalid.
+
+=cut
+
+sub http_response {
+	my $status = ( shift or 500 );
+	$status = 500 unless status_message $status;
+	my $body = shift unless $status == 500;
+	my $result = "Status: $status\r\n";
+	$result = "${result}Content-type: text/plain\r\n\r\n$body" if $body;
+	return $result;
 }
-
-
 
 =head1 AUTHOR
 
@@ -159,4 +178,4 @@ See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-1; # End of Dyad::Server
+1;    # End of Dyad::Server
