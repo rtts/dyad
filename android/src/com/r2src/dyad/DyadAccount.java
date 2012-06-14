@@ -15,14 +15,14 @@ import android.support.v4.content.LocalBroadcastManager;
 
 /**
  * An account with all of its state stored server-side. Once registered, it only
- * needs to hold on to it's session token, which you can also pass to the
+ * needs to hold on to it's auth token, which you can also pass to the
  * constructor to construct a registered account.
  * <p>
  * Dyad Server API version 1 accepts re-registration of an account and will
  * return a new session token when that happens. This should be useful to
  * <ol>
  * <li>Update the c2dm_id when it has changed
- * <li>Refresh the session token when it expires
+ * <li>Refresh the auth token when it expires
  * <li>Transfer existing Dyad Accounts to new devices.
  * </ol>
  * All the methods of this class are non-blocking and safe to call from the UI

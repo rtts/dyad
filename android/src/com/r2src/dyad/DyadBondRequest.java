@@ -15,7 +15,7 @@ import org.json.JSONObject;
  */
 public class DyadBondRequest extends DyadRequest {
 
-	private static final String PATH = "/v1/register";
+	private static final String PATH = "/v1/bond";
 
 	/**
 	 * Constructor
@@ -28,7 +28,7 @@ public class DyadBondRequest extends DyadRequest {
 		JSONObject body = new JSONObject();
 		HttpEntity entity;
 		try {
-			body.put("token", secret);
+			body.put("secret", secret);
 			entity = new StringEntity(body.toString());
 		} catch (JSONException e) {
 			throw new RuntimeException(e);

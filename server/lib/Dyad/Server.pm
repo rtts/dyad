@@ -1,16 +1,24 @@
 package Dyad::Server;
 
-use 5.006;
+use v5.14;
 use strict;
 use warnings;
 use FCGI;
 use JSON;
 use Try::Tiny;
 use HTTP::Status qw(:constants status_message);
-
+use LWP::UserAgent;
+require HTTP::Request;
 require Exporter;
+
+sub register;
+sub process_request;
+sub stdin;
+sub json;
+sub http_response;
+
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(run register get_body http_response);
+our @EXPORT_OK = qw(register process_request stdin json http_response);
 
 =head1 NAME
 
@@ -41,10 +49,9 @@ Perhaps a little code snippet.
 
 =cut
 
-my $Routing_table = { '/register' => \&register };
-
-sub respond;
-sub get_body;
+my $http_client = LWP::UserAgent->new;
+my $dbh;
+my $google_url = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
 =head2 run
 
@@ -53,32 +60,134 @@ This call should never return, but make sure to run a process manager anyway!
 
 =cut
 
-sub run {
-	my $socket = FCGI::OpenSocket( shift, 100 );
-	my $request = FCGI::Request( \*STDIN, \*STDOUT, \*STDERR, \%ENV, $socket );
+my $api = [
+    [
+        0,
+        POST => '^/register$',
+        \&register => [ 'token', 'c2dm_id' ]
+    ],
 
-	while ( $request->Accept() >= 0 ) {
+    [
+        1,    # authorization required
+        POST => '^/bond$',
+        \&bond => [ 'secret' ]
+    ],
 
-		#print "Content-type: text/plain\r\n\r\n";
-		#for ( keys %ENV ) {
-		#	print "$_: $ENV{$_}\n";
-		#}
+    [
+        GET       => '^/session$',
+        \&session => [],
+        'authorization_required'
+    ]
+];
 
-		my $func = $Routing_table->{ $ENV{REQUEST_URI} };
-		print http_response HTTP_NOT_FOUND, "unknown API request" if not $func;
-		print http_response $func->();
-	}
+# classic Perl half-assed OO
+sub new {
+    my $class = shift;
+    $dbh = shift;
+    my $url = shift;
+    $google_url = $url if $url;
+    my $self = {};
+    bless $self, $class;
+    return $self;
 }
 
 sub register {
-	return 405, "expecting POST request"
-	  if not $ENV{'REQUEST_METHOD'} eq 'POST';
-	( my $body, my $message ) = get_body;
-	return 400, $message if not defined $body;
+    my $token   = shift;
+    my $c2dm_id = shift;
 
-	my $token   = $body->{"token"}   or return 422, "token missing";
-	my $c2dm_id = $body->{"c2dm_id"} or return 422, "c2dm_id missing";
+    my $request = HTTP::Request->new(
+        GET => $google_url,
+        { Authorization => "OAuth $token" }
+    );
+    my $response = $http_client->request($request);
+    if ( $response->is_success ) {
+        my $google_id;
+        try {
+            my $json = decode_json $response->decoded_content;
+            $google_id = $json->{id};
+        }
+        catch {
+            return 500, "Google has a virus.";
+        }
 
+        my $session_token .= chr( ( rand 93 ) + 33 ) for ( 1 .. 32 );
+        
+        $dbh->do(
+            "INSERT OR REPLACE INTO Users (google_id, c2dm_id, session, other_id) 
+             VALUES (?,?,?, (SELECT other_id FROM Users WHERE google_id = ?));",
+            $google_id, $c2dm_id, $session_token, $google_id
+        );
+
+        return 200, { session_token => $session_token };
+    }
+    else {
+        return 401, "Auth token rejected by Google.";
+    }
+}
+
+sub bond {
+    my $secret = shift;
+    
+    my $sth = $dbh->do("SELECT * FROM Users WHERE secret = ?", $secret);
+    
+}
+
+=head1 process_request
+
+
+=cut
+
+sub process_request {
+
+    $dbh = shift;
+
+    for my $call ( @{$api} ) {
+        if (    $ENV{REQUEST_METHOD} eq $call->[1]
+            and $ENV{REQUEST_URI} =~ $call->[2] )
+        {
+
+            if ( $call->[0] ) {    # if authorization required
+
+                # TODO: authorize
+            }
+
+            given ( $call->[1] ) {
+                when ( 'GET' or 'DELETE' ) {
+                    return http_response 400,
+                      "Request contains a body, but shouldn't"
+                      if $ENV{CONTENT_LENGTH};
+
+                    return http_response $call->[3]->();
+                }
+                when ( 'PUT' or 'POST' ) {
+                    my $body = stdin;
+                    return http_response 400,
+                      "Body is empty or wrong content length."
+                      if not defined $body;
+
+                    # parse request body into json
+                    $body = json($body) or return 400, "Invalid JSON.";
+                    return 400, "Expected JSON object, got array."
+                      unless ref $body eq 'HASH';
+
+                    # check if the required parameters are present,
+                    # and store them in @params
+                    my @params;
+                    for my $req ( $call->[4] ) {
+                        if ( defined $body->{$req} ) {
+                            push @params, $body->{$req};
+                        }
+                        else {
+                            return 400, "Missing required parameter '$req'.";
+                        }
+                    }
+
+                    # run api function with the neccesary parameters
+                    return http_response $call->[3]->(@params);
+                }
+            }
+        }
+    }
 }
 
 =head2 get_body
@@ -89,20 +198,11 @@ that describes the error.
 
 =cut
 
-sub get_body {
-	return undef, "no body found in request"
-	  if not $ENV{'CONTENT_LENGTH'};
-
-	my $length = read( STDIN, my $body, $ENV{'CONTENT_LENGTH'} );
-	return undef, "reported content length does not match actual length"
-	  if $ENV{'CONTENT_LENGTH'} != $length;
-
-	try {
-		return decode_json $body;
-	}
-	catch {
-		return undef, "json could not be decoded";
-	}
+sub stdin {
+    return if not $ENV{'CONTENT_LENGTH'};
+    my $length = read( STDIN, my $body, $ENV{'CONTENT_LENGTH'} );
+    return if $ENV{'CONTENT_LENGTH'} != $length;
+    return $body;
 }
 
 =head2 http_response
@@ -114,12 +214,33 @@ code is omitted or invalid.
 =cut
 
 sub http_response {
-	my $status = ( shift or 500 );
-	$status = 500 unless status_message $status;
-	my $body = shift unless $status == 500;
-	my $result = "Status: $status\r\n";
-	$result = "${result}Content-type: text/plain\r\n\r\n$body" if $body;
-	return $result;
+    my $status = ( shift or 500 );
+    $status = 500 unless status_message $status;
+    my $body = shift unless $status == 500;
+    if ( ref $body eq 'HASH' ) {
+        try {
+            $body = encode_json $body;
+        }
+        catch {
+            $status = 500;
+            $body   = "Error encoding JSON.";
+        }
+    }
+    my $result = "Status: $status\r\n";
+    $result = "${result}Content-type: text/plain\r\n\r\n$body" if $body;
+    return $result;
+}
+
+sub json {
+    my $body = shift;
+
+    try {
+        $body = decode_json $body;
+    }
+    catch {
+        return;
+    }
+    return $body;
 }
 
 =head1 AUTHOR
@@ -179,3 +300,4 @@ See http://dev.perl.org/licenses/ for more information.
 =cut
 
 1;    # End of Dyad::Server
+

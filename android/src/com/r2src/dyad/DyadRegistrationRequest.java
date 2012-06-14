@@ -25,10 +25,7 @@ public class DyadRegistrationRequest extends DyadRequest {
 	 * 
 	 * @param authToken
 	 *            An OAuth2 token with the following scope:
-	 *            "oauth2:https://www.googleapis.com/auth/userinfo.email"
-	 * 
-	 *            The auth token type "Email" is a valid alias for this.
-	 *            However, the Google Authenticator plugin thinks it's not...
+	 *            "oauth2:https://www.googleapis.com/auth/userinfo.profile"
 	 * 
 	 * @param c2dm_id
 	 *            The C2DM registration id of the device.
@@ -61,14 +58,17 @@ public class DyadRegistrationRequest extends DyadRequest {
 		JSONObject body;
 		switch (response.getStatusLine().getStatusCode()) {
 
-		// account already registered
+		// account (re)registered
 		case 200:
 			break;
 
-		// new account created
-		case 201:
-			break;
-
+		case 401:
+			// TODO: The auth token has expired. 
+			// Invalidate Token, Request a new one,
+			// compare it to the old one. If different,
+			// send the new one to the server. If the same,
+			// throw an error
+			
 		// any kind of error
 		default:
 			throw new DyadServerException(response);
@@ -77,7 +77,7 @@ public class DyadRegistrationRequest extends DyadRequest {
 		HttpEntity entity = response.getEntity();
 		try {
 			body = new JSONObject(EntityUtils.toString(entity));
-			account.setSessionToken(body.getString("sessionToken"));
+			account.setSessionToken(body.getString("session_token"));
 		} catch (ParseException e) {
 			throw new DyadServerException(e, response);
 		} catch (JSONException e) {
