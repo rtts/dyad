@@ -2,9 +2,10 @@ package Dyad::Server;
 
 use v5.14;
 use strict;
-use warnings;
 use FCGI;
 use JSON;
+use MongoDB;
+use MongoDB::OID;
 use Try::Tiny;
 use HTTP::Status qw(:constants status_message);
 use LWP::UserAgent;
@@ -49,9 +50,13 @@ Perhaps a little code snippet.
 
 =cut
 
+my $GOOGLE_URL  = 'https://www.googleapis.com/oauth2/v2/userinfo';
+my $DB_NAME     = 'dyad';
+
 my $http_client = LWP::UserAgent->new;
-my $dbh;
-my $google_url = 'https://www.googleapis.com/oauth2/v2/userinfo';
+my $conn        = MongoDB::Connection->new;
+my $db;
+my $users;
 
 =head2 run
 
@@ -61,75 +66,107 @@ This call should never return, but make sure to run a process manager anyway!
 =cut
 
 my $api = [
-    [
-        0,
-        POST => '^/register$',
-        \&register => [ 'token', 'c2dm_id' ]
-    ],
+	[
+		0,
+		POST => '^/register$',
+		\&register => [ 'token', 'c2dm_id' ]
+	],
 
-    [
-        1,    # authorization required
-        POST => '^/bond$',
-        \&bond => [ 'secret' ]
-    ],
-
-    [
-        GET       => '^/session$',
-        \&session => [],
-        'authorization_required'
-    ]
+	[
+		1,    # authorization required
+		POST   => '^/bond$',
+		\&bond => ['secret']
+	]
 ];
 
 # classic Perl half-assed OO
 sub new {
-    my $class = shift;
-    $dbh = shift;
-    my $url = shift;
-    $google_url = $url if $url;
-    my $self = {};
-    bless $self, $class;
-    return $self;
+	my $class = shift;
+	my $options = shift;
+	
+	$GOOGLE_URL = ( $options->{google_url} or $GOOGLE_URL );
+	$DB_NAME = ( $options->{db_name} or $DB_NAME );
+	
+	$db          = $conn->$DB_NAME;
+	$users       = $db->users;
+	
+	my $self = {};
+	bless $self, $class;
+	return $self;
 }
 
 sub register {
-    my $token   = shift;
-    my $c2dm_id = shift;
+	my $token   = shift;
+	my $c2dm_id = shift;
 
-    my $request = HTTP::Request->new(
-        GET => $google_url,
-        { Authorization => "OAuth $token" }
-    );
-    my $response = $http_client->request($request);
-    if ( $response->is_success ) {
-        my $google_id;
-        try {
-            my $json = decode_json $response->decoded_content;
-            $google_id = $json->{id};
-        }
-        catch {
-            return 500, "Google has a virus.";
-        }
+	my $request = HTTP::Request->new(
+		GET => $GOOGLE_URL,
+		{ Authorization => "OAuth $token" }
+	);
+	my $response = $http_client->request($request);
+	if ( $response->is_success ) {
+		my $google_id;
+		try {
+			my $json = decode_json $response->decoded_content;
+			$google_id = $json->{id};
+		  }
+		  catch {
+			return 500, "Google has a virus.";
+		  }
 
-        my $session_token .= chr( ( rand 93 ) + 33 ) for ( 1 .. 32 );
-        
-        $dbh->do(
-            "INSERT OR REPLACE INTO Users (google_id, c2dm_id, session, other_id) 
-             VALUES (?,?,?, (SELECT other_id FROM Users WHERE google_id = ?));",
-            $google_id, $c2dm_id, $session_token, $google_id
-        );
+		  my $session_token .= chr( ( rand 93 ) + 33 ) for ( 1 .. 32 );
 
-        return 200, { session_token => $session_token };
-    }
-    else {
-        return 401, "Auth token rejected by Google.";
-    }
+		$users->update(
+			{ google_id => $google_id },
+			{
+				'$set' => {
+					c2dm_id       => $c2dm_id,
+					session_token => $session_token
+				}
+			},
+			{ upsert => 1 }
+		);
+
+		return 200, { session_token => $session_token };
+	}
+	else {
+		return 401, "Auth token rejected by Google.";
+	}
 }
 
 sub bond {
-    my $secret = shift;
-    
-    my $sth = $dbh->do("SELECT * FROM Users WHERE secret = ?", $secret);
-    
+	my $secret  = shift;
+	my $google_id = shift;
+
+	# Retrieve an _other_ user with the same secret
+	my $other =
+	  $users->find_one( { secret => $secret, google_id => { '$ne' => $google_id } } );
+
+	if ($other) {
+		$users->update(
+			{ google_id => $other->{google_id} },
+			{
+				'$set'   => { other  => $google_id },
+				'$unset' => { secret => 1 }
+			}
+		);
+		$users->update(
+			{ google_id => $google_id },
+			{
+				'$set'   => { other  => $other->{google_id} },
+				'$unset' => { secret => 1 }
+			}
+		);
+
+		# TODO: send c2dm push to other.
+		
+		return 200, "Successfully bonded.";
+	}
+	else {
+		$users->update( { google_id => $google_id },
+			{ '$set' => { secret => $secret } } );
+		return 202, "Please wait for other to send secret";
+	}
 }
 
 =head1 process_request
@@ -139,55 +176,57 @@ sub bond {
 
 sub process_request {
 
-    $dbh = shift;
+	for my $call ( @{$api} ) {
+		if (    $ENV{REQUEST_METHOD} eq $call->[1]
+			and $ENV{REQUEST_URI} =~ $call->[2] )
+		{
 
-    for my $call ( @{$api} ) {
-        if (    $ENV{REQUEST_METHOD} eq $call->[1]
-            and $ENV{REQUEST_URI} =~ $call->[2] )
-        {
+			my $google_id;
+			if ( $call->[0] ) {    # if authorization required
+				my $session_token = $ENV{HTTP_X_DYAD_AUTHORIZATION} or
+					return 401, "Missing X-Dyad-Authorization header.";
+				
+				$google_id = $users->find_one({session_token => $session_token}, { google_id => 1 })->{google_id}
+					or return 401, "Invalid session token. Please re-register.";
+			}
 
-            if ( $call->[0] ) {    # if authorization required
+			given ( $call->[1] ) {
+				when ( 'GET' or 'DELETE' ) {
+					return http_response 400,
+					  "Request contains a body, but shouldn't"
+					  if $ENV{CONTENT_LENGTH};
 
-                # TODO: authorize
-            }
+					return http_response $call->[3]->($google_id);
+				}
+				when ( 'PUT' or 'POST' ) {
+					my $body = stdin;
+					return http_response 400,
+					  "Body is empty or wrong content length."
+					  if not defined $body;
 
-            given ( $call->[1] ) {
-                when ( 'GET' or 'DELETE' ) {
-                    return http_response 400,
-                      "Request contains a body, but shouldn't"
-                      if $ENV{CONTENT_LENGTH};
+					# parse request body into json
+					$body = json($body) or return 400, "Invalid JSON.";
+					return 400, "Expected JSON object, got array."
+					  unless ref $body eq 'HASH';
 
-                    return http_response $call->[3]->();
-                }
-                when ( 'PUT' or 'POST' ) {
-                    my $body = stdin;
-                    return http_response 400,
-                      "Body is empty or wrong content length."
-                      if not defined $body;
+					# check if the required parameters are present,
+					# and store them in @params
+					my @params;
+					for my $req ( $call->[4] ) {
+						if ( defined $body->{$req} ) {
+							push @params, $body->{$req};
+						}
+						else {
+							return 400, "Missing required parameter '$req'.";
+						}
+					}
 
-                    # parse request body into json
-                    $body = json($body) or return 400, "Invalid JSON.";
-                    return 400, "Expected JSON object, got array."
-                      unless ref $body eq 'HASH';
-
-                    # check if the required parameters are present,
-                    # and store them in @params
-                    my @params;
-                    for my $req ( $call->[4] ) {
-                        if ( defined $body->{$req} ) {
-                            push @params, $body->{$req};
-                        }
-                        else {
-                            return 400, "Missing required parameter '$req'.";
-                        }
-                    }
-
-                    # run api function with the neccesary parameters
-                    return http_response $call->[3]->(@params);
-                }
-            }
-        }
-    }
+					# run api function with the neccesary parameters
+					return http_response $call->[3]->(@params, $google_id);
+				}
+			}
+		}
+	}
 }
 
 =head2 get_body
@@ -199,10 +238,10 @@ that describes the error.
 =cut
 
 sub stdin {
-    return if not $ENV{'CONTENT_LENGTH'};
-    my $length = read( STDIN, my $body, $ENV{'CONTENT_LENGTH'} );
-    return if $ENV{'CONTENT_LENGTH'} != $length;
-    return $body;
+	return if not $ENV{'CONTENT_LENGTH'};
+	my $length = read( STDIN, my $body, $ENV{'CONTENT_LENGTH'} );
+	return if $ENV{'CONTENT_LENGTH'} != $length;
+	return $body;
 }
 
 =head2 http_response
@@ -214,33 +253,33 @@ code is omitted or invalid.
 =cut
 
 sub http_response {
-    my $status = ( shift or 500 );
-    $status = 500 unless status_message $status;
-    my $body = shift unless $status == 500;
-    if ( ref $body eq 'HASH' ) {
-        try {
-            $body = encode_json $body;
-        }
-        catch {
-            $status = 500;
-            $body   = "Error encoding JSON.";
-        }
-    }
-    my $result = "Status: $status\r\n";
-    $result = "${result}Content-type: text/plain\r\n\r\n$body" if $body;
-    return $result;
+	my $status = ( shift or 500 );
+	$status = 500 unless status_message $status;
+	my $body = shift unless $status == 500;
+	if ( ref $body eq 'HASH' ) {
+		try {
+			$body = encode_json $body;
+		  }
+		  catch {
+			$status = 500;
+			$body   = "Error encoding JSON.";
+		  }
+	}
+	my $result = "Status: $status\r\n";
+	$result = "${result}Content-type: text/plain\r\n\r\n$body" if $body;
+	return $result;
 }
 
 sub json {
-    my $body = shift;
+	my $body = shift;
 
-    try {
-        $body = decode_json $body;
-    }
-    catch {
-        return;
-    }
-    return $body;
+	try {
+		$body = decode_json $body;
+	  }
+	  catch {
+		return;
+	  }
+	  return $body;
 }
 
 =head1 AUTHOR
