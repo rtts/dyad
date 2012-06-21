@@ -5,7 +5,7 @@ use lib 't';
 use Mock::Google;
 use Dyad::Server qw(register http_response json_to_hashref);
 
-use Test::More tests => 33;
+use Test::More tests => 35;
 
 my $PORT       = 8899;
 my $GOOGLE_URL = "http://localhost:$PORT";
@@ -15,13 +15,20 @@ my $DB_NAME    = 'testdb';
 # Tests of new #
 ################
 
-my $server =
-  Dyad::Server->new( google_url => $GOOGLE_URL, db_name => $DB_NAME );
+my $conn   = MongoDB::Connection->new;
+my $db     = $conn->$DB_NAME;
+my $server = Dyad::Server->new( google_url => $GOOGLE_URL, mongodb => $db );
 
 my $users = $server->{users};
 
 ok defined $users,
   "Instantiating server object creates MongoDB collection reference.";
+
+ok ((not defined eval { Dyad::Server->new; 1 }),
+  "You have to pass the key mongodb to the constructor.");
+ok ((not defined eval { Dyad::Server->new(mongodb => 'invalid_db'); 1 }),
+  "You have to pass a _MongoDB_ instance as the value for the key mongodb");
+
 
 #####################
 # Tests of register #
@@ -134,7 +141,7 @@ kill 15, $pid;
 ##########################
 
 my $hashref = { key1 => "value1", key2 => 42 };
-my $json    = encode_json $hashref;
+my $json = encode_json $hashref;
 
 is http_response( 200, $hashref ),
   "Status: 200\r\nContent-type: application/json\r\n\r\n$json",
@@ -153,7 +160,8 @@ like http_response(), qr(Status: 500\r\nContent-type: text/plain\r\n\r\n.+),
 like http_response(999), qr(Status: 500\r\nContent-type: text/plain\r\n\r\n.+),
   "invalid status code produces status 500 (internal server error)";
 
-like http_response( undef, "BODY" ), qr(Status: 500\r\nContent-type: text/plain\r\n\r\n.+),
+like http_response( undef, "BODY" ),
+  qr(Status: 500\r\nContent-type: text/plain\r\n\r\n.+),
   "body without status code produces status 500 (internal server error)";
 
 ############################

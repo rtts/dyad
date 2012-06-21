@@ -5,14 +5,15 @@ use FCGI;
 use DBI;
 
 my $QUEUE_SIZE = 100;
+my $DB_NAME    = 'dyad';
 
-my $request = FCGI::Request(
- \*STDIN, \*STDOUT, \*STDERR, \%ENV,
- FCGI::OpenSocket( '127.0.0.1:3454', $QUEUE_SIZE )
-);
-
-my $dyad_server = Dyad::Server->new;
+my $request =
+  FCGI::Request( \*STDIN, \*STDOUT, \*STDERR, \%ENV,
+    FCGI::OpenSocket( '127.0.0.1:3454', $QUEUE_SIZE ) );
+my $conn        = MongoDB::Connection->new;
+my $db          = $conn->$DB_NAME;
+my $dyad_server = Dyad::Server->new($db);
 
 while ( $request->Accept() >= 0 ) {
- print $dyad_server->process_request();
+    print $dyad_server->process_request();
 }

@@ -32,7 +32,6 @@ my $GOOGLE_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 my $DB_NAME    = 'dyad';
 
 my $http_client = LWP::UserAgent->new;
-my $conn        = MongoDB::Connection->new;
 my $db;
 my $users;
 
@@ -60,12 +59,14 @@ Classic Perl half-assed OO.
 
 sub new {
     my $class   = shift;
-    my %options = @_;
+    my %kwargs = @_;
+    
+    $db = $kwargs{mongodb}
+        and $db->isa("MongoDB::Database")
+        or die "You have to pass a MongoDB instance to Dyad::Server::new\n";
 
-    $GOOGLE_URL = $options{google_url} if $options{google_url};
-    $DB_NAME    = $options{db_name}    if $options{db_name};
+    $GOOGLE_URL = $kwargs{google_url} if $kwargs{google_url};
 
-    $db    = $conn->$DB_NAME;
     $users = $db->users;
 
     # make $users available for testing
@@ -291,7 +292,7 @@ A small wrapper function for decode_json that traps its croaks.
 =cut
 
 sub json_to_hashref {
-    my $json = ( eval { decode_json shift; } or 0 );
+    my $json = eval { decode_json shift };
     $json = 0 if ref $json ne "HASH";
     return $json;
 }
