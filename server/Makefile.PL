@@ -16,5 +16,5 @@ WriteMakefile(
         'Test::More' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean               => { FILES => 'Dyad-Server-* Makefile.old cover_db' },
+    clean               => { FILES => 'Dyad-Server-* cover_db' },
 );

@@ -20,7 +20,6 @@ Perhaps a little code snippet.
 
 use v5.14;
 use strict;
-use FCGI;
 use JSON;
 use MongoDB;
 use HTTP::Status qw(:constants status_message);
@@ -28,14 +27,12 @@ use LWP::UserAgent;
 require HTTP::Request;
 require Exporter;
 
-my $GOOGLE_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
-my $DB_NAME    = 'dyad';
+# change this from outside when testing
+our $GOOGLE_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
 my $http_client = LWP::UserAgent->new;
-my $db;
-my $users;
 
-my $api = [
+our $api = [
     [
         0,
         POST => '^/register$',
@@ -58,19 +55,15 @@ Classic Perl half-assed OO.
 =cut
 
 sub new {
-    my $class   = shift;
+    my $class  = shift;
     my %kwargs = @_;
-    
-    $db = $kwargs{mongodb}
-        and $db->isa("MongoDB::Database")
-        or die "You have to pass a MongoDB instance to Dyad::Server::new\n";
 
-    $GOOGLE_URL = $kwargs{google_url} if $kwargs{google_url};
+    my $self = {};
 
-    $users = $db->users;
+    $self->{db} = $kwargs{mongodb} and $self->{db}->isa("MongoDB::Database")
+      or die "You have to pass a MongoDB instance to Dyad::Server::new\n";
 
-    # make $users available for testing
-    bless { users => $users }, $class;
+    bless $self, $class;
 }
 
 =head2 process_request
@@ -80,6 +73,7 @@ Processes an FCGI request.
 =cut
 
 sub process_request {
+    my $self= shift;
 
     for my $call ( @{$api} ) {
         if (    $ENV{REQUEST_METHOD} eq $call->[1]
@@ -89,32 +83,34 @@ sub process_request {
             my $google_id;
             if ( $call->[0] ) {    # if authorization required
                 my $session_token = $ENV{HTTP_X_DYAD_AUTHORIZATION}
-                  or return http_response(401, "Missing X-Dyad-Authorization header.");
+                  or return http_response( 401,
+                    "Missing X-Dyad-Authorization header." );
 
                 $google_id =
-                  $users->find_one( { session_token => $session_token },
-                    { google_id => 1 } )->{google_id}
-                  or return http_response(401, "Invalid session token. Please re-register.");
+                  $self->{db}->users->find_one( { session_token => $session_token })->{google_id}
+                  or return http_response( 401,
+                    "Invalid session token. Please re-register." );
             }
 
             given ( $call->[1] ) {
                 when ( 'GET' or 'DELETE' ) {
-                    return http_response(400,
-                      "Request contains a body, but shouldn't")
+                    return http_response( 400,
+                        "Request contains a body, but shouldn't" )
                       if $ENV{CONTENT_LENGTH};
 
-                    return http_response( $call->[3]->($google_id) );
+                    return http_response( $call->[3]->($self->{db}, $google_id) );
                 }
                 when ( 'PUT' or 'POST' ) {
                     my $body = &stdin;
-                    return http_response(400,
-                      "Body is empty or wrong content length.")
+                    return http_response( 400,
+                        "Body is empty or wrong content length." )
                       if not defined $body;
 
                     # parse request body into json
                     $body = json_to_hashref($body)
-                      or return http_response(400, "Invalid JSON.");
-                    return http_response(400, "Expected JSON object, got array.")
+                      or return http_response( 400, "Invalid JSON." );
+                    return http_response( 400,
+                        "Expected JSON object, got array." )
                       unless ref $body eq 'HASH';
 
                     # check if the required parameters are present,
@@ -125,16 +121,18 @@ sub process_request {
                             push @params, $body->{$req};
                         }
                         else {
-                            return http_response(400, "Missing required parameter '$req'.");
+                            return http_response( 400,
+                                "Missing required parameter '$req'." );
                         }
                     }
 
                     # run api function with the neccesary parameters
-                    return http_response($call->[3]->( @params, $google_id ));
+                    return http_response( $call->[3]->( $self->{db}, @params, $google_id ) );
                 }
             }
         }
     }
+    return http_response(404, "Could not find given method.");
 }
 
 =head1 INTERNAL SUBROUTINES
@@ -163,6 +161,7 @@ error string.
 =cut
 
 sub register {
+    my $db = shift;
     my $token   = shift;
     my $c2dm_id = shift;
 
@@ -179,7 +178,7 @@ sub register {
         my $session_token = '';
         $session_token .= chr( ( rand 93 ) + 33 ) for ( 1 .. 32 );
 
-        $users->update(
+        $db->users->update(
             { google_id => $google_id },
             {
                 '$set' => {
@@ -201,28 +200,43 @@ sub register {
 
 Should be called with a couple's shared secret and a user id.
 
-Returns the tuple ($status_code, $body) where $body might be a hashref or an
-error string.
+Returns the tuple ($status_code, $body) where $body is a status string.
 
 =cut
 
 sub bond {
+    my $db = shift;
     my $secret    = shift;
     my $google_id = shift;
 
-    # Retrieve an _other_ user with the same secret
-    my $other = $users->find_one(
-        { secret => $secret, google_id => { '$ne' => $google_id } } );
+    # TODO: use timestamps
+    # in this case for selecting the most recent secret
 
-    if ($other) {
-        $users->update(
-            { google_id => $other->{google_id} },
-            {
-                '$set'   => { other  => $google_id },
-                '$unset' => { secret => 1 }
+    # Retrieve an _other_ user with the same secret and unset it
+    # and set the other field (all in the same atomic operation!)
+    my $other = $db->run_command(
+        {
+            findAndModify => 'users',
+            query         => {
+                secret    => $secret,
+                google_id => { '$ne' => $google_id }
+            },
+            update => {
+                '$unset' => { secret => 1 },
+                '$set'   => { other  => $google_id }
             }
-        );
-        $users->update(
+        }
+    )->{value};
+
+    if ($other) { # bond!
+#        $users->update(
+#            { google_id => $other->{google_id} },
+#            {
+#                '$set'   => { other  => $google_id },
+#                '$unset' => { secret => 1 }
+#            }
+#        );
+        $db->users->update(
             { google_id => $google_id },
             {
                 '$set'   => { other  => $other->{google_id} },
@@ -235,7 +249,7 @@ sub bond {
         return 200, "Successfully bonded.";
     }
     else {
-        $users->update(
+        $db->users->update(
             { google_id => $google_id },
             { '$set'    => { secret => $secret } }
         );
@@ -274,12 +288,12 @@ sub http_response {
     $status = 500 unless status_message $status;
     my $body = $status == 500 ? "Internal Server Error" : shift;
     my $type = "text/plain";
-    
-    if (ref $body eq 'HASH') {
-      $body = encode_json $body;
-      $type = "application/json";
+
+    if ( ref $body eq 'HASH' ) {
+        $body = encode_json $body;
+        $type = "application/json";
     }
-    
+
     my $result = "Status: $status\r\n";
     $result .= "Content-type: $type\r\n\r\n$body" if $body;
     return $result;
