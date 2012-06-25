@@ -41,23 +41,78 @@
 
     <h1 id="introduction">Introduction</h1>
 
-    <h1 id="dyadserver">Dyad Server</h1>
+    <h1 id="server">Dyad Server</h1>
 
-    <h2 id="dyadserver:overview">Overview</h2>
+    <h2 id="server:overview">Overview</h2>
 
-    <h2 id="dyadserver:installation">Installation</h2>
+    <h2 id="server:installation">Installation</h2>
 
-    <h2 id="dyadserver:perlpod">Perlpod</h2>
+    <h2 id="server:perlpod">Perlpod</h2>
 
-    <h1 id="dyadclient">Dyad Client</h1>
+    <h1 id="client">Dyad Client</h1>
 
-    <h2 id="dyadclient:overview">Overview</h2>
+    <h2 id="client:overview">Overview</h2>
 
-    <h2 id="dyadclient:examples">Examples</h2>
+    <h2>Obtain the Android SDK</h2>
+    <p>
+      Download the Android SDK
+      from <a href="http://developer.android.com/sdk/">http://developer.android.com/sdk/</a>
+    </p>
+    <h2 id="client:command-line">Configuring the project from the command line</h2>
+    
+    <ol>
+      <li>
+	<p>
+	  Run the command <code>android list targets</code> and find
+	  the number that belong the Android target you are developing
+	  your app for. The minimum Android version supported by Dyad
+	  is Android 2.2 (API 8).
+	</p>
+      </li>
+      <li>
+	<p>
+	  Run the command <code>android update lib-project --target
+	  {target-number} --path {dir}/dyad/client</code> where
+	  {target number} is the number of the previous step and {dir}
+	  is the path to the directory where you placed the Dyad
+	  source code.
+	</p>
+      </li>
+      <li>
+	<p>
+	  Copy <a href="http://developer.android.com/tools/extras/support-library.html">android-support-v4.jar</a>
+	  from the directory
+	  <code>android-sdk/extras/android/support/v4/</code>
+	  to <code>dyad/client/libs/</code>.
+	</p>
+      </li>
+      <li>
+	<p>
+	  If you want to use Bump for bonding, <a href="http://bu.mp/company/api">sign up as a developer</a>.
 
-    <h2 id="dyadclient:javadoc">Javadoc</h2>
+	</p>
+      </li>
+      
+    <h2 id="client:eclipse">Importing the project into Eclipse</h2>
+    <p>
+      Import the client part of dyad as an Android project into Eclipse. Go to the Project Properties section to change the Android Project into an Android Library.
+    </p>
+    
+    <h3>Android Support Libraries</h3>
+    <p>
+      Dyad Client tries to be backward compatible with Android devices back to API level 8.
+      Blablabla
+    </p>
+    <p>
+      To properly reference the Android Support libraries in Eclipse:
+ > Project Properties > libraries > Add External Jars
+      Select {path-to-sdk}/extras/android/support/v4/android-support-v4.jar
+ and add the support library jar-file to your buildpath. 
+    <h2 id="client:examples">Examples</h2>
 
-    <h2 id="faq">Frequently Asked Questions</h2>
+    <h2 id="client:javadoc">Javadoc</h2>
+
+    <h1 id="faq">Frequently Asked Questions</h1>
 
     <div style="text-align: center; margin-top: 5em; font-size: .8em">
       Dyad is a project by <a href="http://r2src.com/"

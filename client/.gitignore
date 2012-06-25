@@ -2,5 +2,6 @@
 /bin
 /proguard-project.txt
 /.classpath
+/project.properties
 /.project
 /doc
