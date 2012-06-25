@@ -2,7 +2,7 @@ use strict;
 use JSON;
 use lib 't';    # the Mock::Google module lives in the test directory
 use Mock::Google;
-use Test::More tests => 46;
+use Test::More tests => 57;
 use Dyad::Server qw(register bond http_response json_to_hashref);
 
 my $PORT = 8899;
@@ -23,8 +23,7 @@ ok defined Dyad::Server->new( mongodb => $db )->{db},
 ok not( defined eval { Dyad::Server->new; 1 } ),
   "You have to pass the key mongodb to the constructor.";
 
-ok not( defined eval { Dyad::Server->new( mongodb => 'invalid_db' ); 1 } )
-  ,
+ok not( defined eval { Dyad::Server->new( mongodb => 'invalid_db' ); 1 } ),
   "You have to pass a _MongoDB_ instance as the value for the key mongodb";
 
 ############################
@@ -32,28 +31,104 @@ ok not( defined eval { Dyad::Server->new( mongodb => 'invalid_db' ); 1 } )
 ############################
 
 my $server = Dyad::Server->new( mongodb => $db );
-
 $Dyad::Server::api = [
     [
         0,
         GET => '^/url$',
         sub {
-            my $db = shift;
-            ok $db->isa("MongoDB::Database"), "First argument is a MongoDB Database.";
-            return 200, "Sub executed.";
-        } => [  ]
-    ],
-    [
-        1,    # authorization required
-        GET   => '^/bond$',
-        \&bond => ['secret']
+            return 200, "ok";
+          } => []
     ]
 ];
 
+# GET - no authorization
 $ENV{REQUEST_METHOD} = 'GET';
-$ENV{REQUEST_URI} = '/url';
+$ENV{REQUEST_URI}    = '/url';
 my $response = $server->process_request;
-is $response, http_response(200, "Sub executed."), "Right response.";
+is $response, http_response( 200, "ok" ),
+  "Successful GET processing without authorization.";
+
+$ENV{REQUEST_METHOD} = 'GET';
+$ENV{REQUEST_URI}    = '/wrong_url';
+$response            = $server->process_request;
+like $response, qr/Status: 404/,
+  "Unknown request_uri / known request method => 404.";
+
+$ENV{REQUEST_METHOD} = 'POST';
+$ENV{REQUEST_URI}    = '/url';
+$response            = $server->process_request;
+like $response, qr/Status: 404/,
+  "Known request_uri / unknown request method => 404.";
+
+# GET - authorization required
+$Dyad::Server::api->[0]->[0] = 1;
+$ENV{REQUEST_METHOD}     = 'GET';
+$ENV{REQUEST_URI}        = '/url';
+$users->insert( { google_id => 1, session_token => 'a_defined_token' } );
+$ENV{HTTP_X_DYAD_AUTHORIZATION} = 'a_defined_token';
+$response = $server->process_request;
+is $response, http_response( 200, "ok" ),
+  "Successful GET processing with authorization.";
+
+delete $ENV{HTTP_X_DYAD_AUTHORIZATION};
+$response = $server->process_request;
+like $response, qr/Status: 401/,
+  "Missing Session Token when calling authorized method => 401.";
+
+$ENV{HTTP_X_DYAD_AUTHORIZATION} = '123';
+$response = $server->process_request;
+like $response, qr/Status: 401/,
+  "Unknown Session Token when calling authorized method => 401.";
+
+# POST - no authorization
+$Dyad::Server::api = [
+    [
+        0,
+        POST => '^/url$',
+        sub {
+            shift;
+            is shift, "value1", "First argument correctly passed.";
+            is shift, "value2", "Second argument correctly passed.";
+            return 200, "ok";
+          } => [ "arg1", "arg2" ]
+    ]
+];
+$ENV{REQUEST_METHOD} = 'POST';
+
+sub set_stdin {
+    my $stdin = shift;
+    open my $fh, '<', \$stdin;
+    $ENV{CONTENT_LENGTH} = length $stdin;
+    return $fh;
+}
+
+local *STDIN = set_stdin('{ "arg1": "value1", "arg2": "value2"}');
+$response = $server->process_request;
+
+is $response, http_response( 200, "ok" ),
+"Successful POST processing. Arguments are parsed and passed.";
+
+local *STDIN = set_stdin('{ "arg1": "value1"}');
+$response = $server->process_request;
+like $response, qr/Status: 400/,
+"Missing argument results in 400 status.";
+
+local *STDIN = set_stdin('invalid json');
+$response = $server->process_request;
+like $response, qr/Status: 400/,
+"Invalid JSON results in 400 status.";
+
+local *STDIN = set_stdin('[ "arg1", "arg2" ]');
+$response = $server->process_request;
+like $response, qr/Status: 400/,
+"JSON root array instead of object results in 400 status.";
+
+local *STDIN = set_stdin('');
+$response = $server->process_request;
+like $response, qr/Status: 400/,
+"Missing body results in 400 status.";
+
+$users->remove;
 
 #####################
 # Tests of register #

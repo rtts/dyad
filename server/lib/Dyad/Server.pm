@@ -73,7 +73,7 @@ Processes an FCGI request.
 =cut
 
 sub process_request {
-    my $self= shift;
+    my $self = shift;
 
     for my $call ( @{$api} ) {
         if (    $ENV{REQUEST_METHOD} eq $call->[1]
@@ -86,21 +86,27 @@ sub process_request {
                   or return http_response( 401,
                     "Missing X-Dyad-Authorization header." );
 
-                $google_id =
-                  $self->{db}->users->find_one( { session_token => $session_token })->{google_id}
+                # note: Devel::Cover fails after the following statement
+                # (please tell me why!)
+                my $user =
+                  $self->{db}->users->find_one(
+                    { session_token => $session_token } )
                   or return http_response( 401,
                     "Invalid session token. Please re-register." );
+
+                $google_id = $user->{google_id};
             }
 
             given ( $call->[1] ) {
-                when ( 'GET' or 'DELETE' ) {
+                when ( 'GET' ) {
                     return http_response( 400,
                         "Request contains a body, but shouldn't" )
                       if $ENV{CONTENT_LENGTH};
 
-                    return http_response( $call->[3]->($self->{db}, $google_id) );
+                    return http_response(
+                        $call->[3]->( $self->{db}, $google_id ) );
                 }
-                when ( 'PUT' or 'POST' ) {
+                when ( 'POST' ) {
                     my $body = &stdin;
                     return http_response( 400,
                         "Body is empty or wrong content length." )
@@ -109,14 +115,11 @@ sub process_request {
                     # parse request body into json
                     $body = json_to_hashref($body)
                       or return http_response( 400, "Invalid JSON." );
-                    return http_response( 400,
-                        "Expected JSON object, got array." )
-                      unless ref $body eq 'HASH';
 
                     # check if the required parameters are present,
                     # and store them in @params
                     my @params;
-                    for my $req ( $call->[4] ) {
+                    for my $req ( @{$call->[4]} ) {
                         if ( defined $body->{$req} ) {
                             push @params, $body->{$req};
                         }
@@ -127,12 +130,13 @@ sub process_request {
                     }
 
                     # run api function with the neccesary parameters
-                    return http_response( $call->[3]->( $self->{db}, @params, $google_id ) );
+                    return http_response(
+                        $call->[3]->( $self->{db}, @params, $google_id ) );
                 }
             }
         }
     }
-    return http_response(404, "Could not find given method.");
+    return http_response( 404, "API function not found." );
 }
 
 =head1 INTERNAL SUBROUTINES
@@ -161,7 +165,7 @@ error string.
 =cut
 
 sub register {
-    my $db = shift;
+    my $db      = shift;
     my $token   = shift;
     my $c2dm_id = shift;
 
@@ -205,7 +209,7 @@ Returns the tuple ($status_code, $body) where $body is a status string.
 =cut
 
 sub bond {
-    my $db = shift;
+    my $db        = shift;
     my $secret    = shift;
     my $google_id = shift;
 
@@ -228,14 +232,7 @@ sub bond {
         }
     )->{value};
 
-    if ($other) { # bond!
-#        $users->update(
-#            { google_id => $other->{google_id} },
-#            {
-#                '$set'   => { other  => $google_id },
-#                '$unset' => { secret => 1 }
-#            }
-#        );
+    if ($other) {
         $db->users->update(
             { google_id => $google_id },
             {
