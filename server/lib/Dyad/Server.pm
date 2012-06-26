@@ -35,13 +35,13 @@ my $http_client = LWP::UserAgent->new;
 our $api = [
     [
         0,
-        POST => '^/register$',
+        POST => qr(^/v1/register$),
         \&register => [ 'token', 'c2dm_id' ]
     ],
 
     [
         1,    # authorization required
-        POST   => '^/bond$',
+        POST   => qr(^/v1/bond$),
         \&bond => ['secret']
     ]
 ];
