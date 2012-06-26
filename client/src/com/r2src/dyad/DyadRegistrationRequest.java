@@ -63,7 +63,8 @@ public class DyadRegistrationRequest extends DyadRequest {
 			break;
 
 		case 401:
-			// TODO: The auth token has expired. 
+			//throw new AuthTokenExpiredException();
+			// TODO for foo: The auth token has expired. 
 			// Invalidate Token, Request a new one,
 			// compare it to the old one. If different,
 			// send the new one to the server. If the same,

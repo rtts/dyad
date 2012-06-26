@@ -42,7 +42,7 @@ public class DyadBondRequest extends DyadRequest {
 	public void onFinished(HttpResponse response, DyadAccount account)
 			throws DyadServerException, IOException {
 		// TODO parse response, instantiate Dyad
-
+		
 	}
 
 }
