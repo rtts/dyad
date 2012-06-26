@@ -3,5 +3,8 @@
 /proguard-project.txt
 /.classpath
 /project.properties
+/local.properties
 /.project
 /doc
+/build.xml
+/libs
