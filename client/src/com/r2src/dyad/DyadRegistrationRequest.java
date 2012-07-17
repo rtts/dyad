@@ -12,6 +12,7 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
 /**
  * A request to register an account with the Dyad Server. Also valid for already
  * registered accounts.
@@ -30,12 +31,12 @@ public class DyadRegistrationRequest extends DyadRequest {
 	 * @param c2dm_id
 	 *            The C2DM registration id of the device.
 	 */
-	public DyadRegistrationRequest(String authToken, String c2dm_id) {
+	public DyadRegistrationRequest(String authToken) {
 		request = new HttpPost(PATH);
 		JSONObject body = new JSONObject();
 		HttpEntity entity;
 		try {
-			body.put("token", authToken).put("c2dm_id", c2dm_id);
+			body.put("token", authToken);
 			entity = new StringEntity(body.toString());
 		} catch (JSONException e) {
 			throw new RuntimeException(e);
@@ -58,19 +59,23 @@ public class DyadRegistrationRequest extends DyadRequest {
 		JSONObject body;
 		switch (response.getStatusLine().getStatusCode()) {
 
-		// account (re)registered
+		// logged into existing account
 		case 200:
+			break;
+		
+		// registered a new account TODO: implement this in Dyad Server
+		case 201:
 			break;
 
 		case 401:
-			//throw new AuthTokenExpiredException();
-			// TODO for foo: The auth token has expired. 
+			// throw new AuthTokenExpiredException();
+			// TODO: The auth token has expired.
 			// Invalidate Token, Request a new one,
 			// compare it to the old one. If different,
 			// send the new one to the server. If the same,
 			// throw an error
-			
-		// any kind of error
+
+			// any kind of error
 		default:
 			throw new DyadServerException(response);
 		}

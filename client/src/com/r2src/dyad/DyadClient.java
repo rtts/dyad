@@ -41,13 +41,15 @@ public class DyadClient {
 	}
 
 	/**
-	 * Helper method to spawn a worker thread making the web api request.
+	 * Helper method to spawn a worker thread making the web api request. TODO:
+	 * It is also possible to let asyncRequest return a Future<HttpResponse>
+	 * Simply change the return type and change the Runnable into a Callable.
 	 */
 	public void asyncRequest(final DyadRequest request,
-			final DyadAccount dyadAccount, final Foo foo, final Handler handler) {
+			final DyadAccount dyadAccount, final DyadRequestCallback callback, final Handler handler) {
 		if (handler == null)
 			throw new IllegalArgumentException("handler is null");
-		if (foo == null)
+		if (callback == null)
 			throw new IllegalArgumentException("foo is null");
 
 		// thread magic!
@@ -55,29 +57,37 @@ public class DyadClient {
 			@Override
 			public void run() {
 				try {
-					HttpResponse response = client.execute(dyadAccount.host,
+					HttpResponse response = client.execute(dyadAccount.getHost(),
 							request.getHttpRequest());
 					request.onFinished(response, dyadAccount);
 					handler.post(new Runnable() {
 						public void run() {
-							foo.onFinished();
+							callback.onFinished();
 						}
 					});
 				} catch (final IOException e) {
 					handler.post(new Runnable() {
 						public void run() {
-							foo.onError(e);
+							callback.onError(e);
 						}
 					});
 				} catch (final DyadServerException e) {
 					handler.post(new Runnable() {
 						public void run() {
-							foo.onError(e);
+							callback.onError(e);
 						}
 					});
 				}
 			}
 		});
+	}
+
+	public HttpResponse execute(DyadRequest request, DyadAccount dyadAccount)
+			throws IOException, DyadServerException {
+		HttpResponse response = client.execute(dyadAccount.getHost(),
+				request.getHttpRequest());
+		request.onFinished(response, dyadAccount);
+		return response;
 	}
 
 }

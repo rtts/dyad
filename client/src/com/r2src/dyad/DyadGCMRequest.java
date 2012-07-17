@@ -12,24 +12,27 @@ import org.json.JSONObject;
 
 
 /**
- * A request both parties should make to instantiate a bonded Dyad.
+ * A request to send the device's GCM id to the Dyad Server. Only valid for already
+ * registered accounts.
+ * 
+ * TODO: implement this request server-side
  */
-public class DyadBondRequest extends DyadRequest {
+public class DyadGCMRequest extends DyadRequest {
 
-	private static final String PATH = "/v1/bond";
+	private static final String PATH = "/v1/gcm";
 
 	/**
-	 * Constructor
-	 * 
-	 * @param secret
-	 *            A secret that is known to both parties that want to bond.
+	 * Creates a new GCM request.
+
+	 * @param RegId
+	 *            The GCM registration id of the device.
 	 */
-	public DyadBondRequest(String secret) {
+	public DyadGCMRequest(String regId) {
 		request = new HttpPost(PATH);
 		JSONObject body = new JSONObject();
 		HttpEntity entity;
 		try {
-			body.put("secret", secret);
+			body.put("gcm_id", regId);
 			entity = new StringEntity(body.toString());
 		} catch (JSONException e) {
 			throw new RuntimeException(e);
@@ -40,19 +43,22 @@ public class DyadBondRequest extends DyadRequest {
 	}
 
 	/**
-	 * TODO: what should happen locally when bond succeeds?
+	 * Handles the response
 	 */
 	@Override
 	public void onFinished(HttpResponse response, DyadAccount account)
 			throws DyadServerException, IOException {
+
+		JSONObject body;
 		switch (response.getStatusLine().getStatusCode()) {
-		case 200: // successful bonding
-			//?;
-		case 202: // secret stored, wait for push
+
+		case 200:
 			break;
-		default:
 		
+		// TODO: handle the possible server responses
+
+		default:
+			throw new DyadServerException(response);
 		}
 	}
-
 }
