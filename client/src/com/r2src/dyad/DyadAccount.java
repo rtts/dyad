@@ -2,21 +2,25 @@ package com.r2src.dyad;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
+import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
+import org.apache.http.params.HttpParams;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AccountManagerCallback;
 import android.accounts.AccountManagerFuture;
-import android.accounts.AuthenticatorException;
-import android.accounts.OperationCanceledException;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
@@ -39,10 +43,12 @@ import com.google.android.gcm.GCMRegistrar;
  */
 public class DyadAccount {
 	
-	private List<Dyad> dyads;
+	private final String senderId;
 	private final HttpHost host;
 	private String sessionToken;
-	private DyadClient client = DyadClient.getInstance();
+	private List<Dyad> dyads;
+	private volatile DefaultHttpClient client;
+	public final ExecutorService executor = Executors.newCachedThreadPool();
 
 	/**
 	 * Broadcasted when the registration process succeeded.
@@ -78,15 +84,20 @@ public class DyadAccount {
 	/**
 	 * Creates a local account that has not yet been registered with the server.
 	 * 
+	 * @param senderId
+	 * 	          The GCM project ID from the URL at the API Console
 	 * @param host
 	 *            The host that runs Dyad Server.
 	 */
-	public DyadAccount(HttpHost host) {
-		this(host, null);
+	public DyadAccount(String senderId, HttpHost host) {
+		this(senderId, host, null);
 	}
 
 	/**
 	 * (Re)creates an account that has already been registered with the server.
+	 * 
+	 * @param senderId
+	 * 	          The GCM project ID from the URL at the API Console
 	 * 
 	 * @param host
 	 *            The host that runs Dyad Server.
@@ -94,9 +105,19 @@ public class DyadAccount {
 	 * @param sessionToken
 	 *            The session token of an existing Dyad Account.
 	 */
-	public DyadAccount(HttpHost host, String sessionToken) {
+	public DyadAccount(String senderId, HttpHost host, String sessionToken) {
+		if (senderId == null) throw new IllegalArgumentException("Sender ID is null");
+		this.senderId = senderId;
+		if (host == null) throw new IllegalArgumentException("Host is null");
 		this.host = host;
-		this.sessionToken = sessionToken;
+		this.sessionToken = sessionToken; // allowed to be null
+		
+		// initialize thread-safe http client
+		client = new DefaultHttpClient();
+		ClientConnectionManager mgr = client.getConnectionManager();
+		HttpParams params = client.getParams();
+		client = new DefaultHttpClient(new ThreadSafeClientConnManager(params,
+				mgr.getSchemeRegistry()), params);
 	}
 
 	/**
@@ -145,7 +166,7 @@ public class DyadAccount {
 	 * broadcast either a {@link #ACTION_REGISTERED_INTENT} when finished, or a
 	 * {@link #ACTION_REGISTRATION_FAILED_INTENT} on error.
 	 * <p>
-	 * This method expects the name of the Google account to be registered as its
+	 * This method expects the Google account name to be registered as its
 	 * second argument. Useful if you already know which Google account to
 	 * register.
 	 * <p>
@@ -193,10 +214,10 @@ public class DyadAccount {
 		GCMRegistrar.checkManifest(activity);
 		final String regId = GCMRegistrar.getRegistrationId(activity);
 		if (regId.equals("")) {
-			GCMRegistrar.register(activity, SENDER_ID);
+			GCMRegistrar.register(activity, senderId);
 		} else {
 			DyadRequest request = new DyadGCMRequest(regId);
-			client.asyncRequest(request, this, new DyadRequestCallback() {
+			asyncExecute(request, this, new DyadRequestCallback() {
 				LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(activity);
 				@Override
 				public void onFinished() {
@@ -243,7 +264,7 @@ public class DyadAccount {
 						}
 					});
 				}
-				client.asyncRequest(request, DyadAccount.this, foo, handler);
+				asyncExecute(request, DyadAccount.this, foo, handler);
 
 			}
 		}, new IntentFilter("com.r2src.dyad.action.GOT_SHARED_SECRET"));
@@ -258,7 +279,7 @@ public class DyadAccount {
 		if (sessionToken == null)
 			throw new IllegalArgumentException("Session Token is null");
 		DyadRequest request = new DyadsRequest(sessionToken);
-		client.asyncRequest(request, this, foo, handler);
+		asyncExecute(request, this, foo, handler);
 	}
 
 	/**
@@ -303,7 +324,7 @@ public class DyadAccount {
 
 				// perform the API request in a separate thread
 				DyadRequest request = new DyadRegistrationRequest(authToken);
-				client.asyncRequest(request, DyadAccount.this, new DyadRequestCallback() {
+				asyncExecute(request, DyadAccount.this, new DyadRequestCallback() {
 				
 					@Override
 					public void onFinished() {
@@ -325,7 +346,56 @@ public class DyadAccount {
 			}
 		}
 	}
+	/**
+	 * Helper method to spawn a worker thread making the web api request. TODO:
+	 * It is also possible to let asyncRequest return a Future<HttpResponse>
+	 * Simply change the return type and change the Runnable into a Callable.
+	 */
+	public void asyncExecute(final DyadRequest request,
+			final DyadAccount dyadAccount, final DyadRequestCallback callback, final Handler handler) {
+		if (handler == null)
+			throw new IllegalArgumentException("handler is null");
+		if (callback == null)
+			throw new IllegalArgumentException("foo is null");
 
+		// thread magic!
+		executor.submit(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					HttpResponse response = client.execute(dyadAccount.getHost(),
+							request.getHttpRequest());
+					request.onFinished(response, dyadAccount);
+					handler.post(new Runnable() {
+						public void run() {
+							callback.onFinished();
+						}
+					});
+				} catch (final IOException e) {
+					handler.post(new Runnable() {
+						public void run() {
+							callback.onError(e);
+						}
+					});
+				} catch (final DyadServerException e) {
+					handler.post(new Runnable() {
+						public void run() {
+							callback.onError(e);
+						}
+					});
+				}
+			}
+		});
+	}
+
+	public HttpResponse execute(DyadRequest request, DyadAccount dyadAccount)
+			throws IOException, DyadServerException {
+		HttpResponse response = client.execute(dyadAccount.getHost(),
+				request.getHttpRequest());
+		request.onFinished(response, dyadAccount);
+		return response;
+	}
+	
 	private class NotRegisteredException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
