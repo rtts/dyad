@@ -38,7 +38,7 @@ public class Dyad {
 	 */
 	public void getStream(DyadRequestCallback foo, Handler handler) {
 		DyadRequest request = new DyadStreamRequest();
-		client.asyncRequest(request, account, foo, handler);
+		client.asyncExecute(request, account, foo, handler);
 	}
 
 	public String getId() {
