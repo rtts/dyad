@@ -20,7 +20,6 @@ import android.os.Handler;
 public class Dyad {
 	private DyadAccount account;
 	private String id;
-	private DyadClient client = DyadClient.getInstance();
 	
 	/**
 	 * Protected constructor -- call {@link DyadAccount.newDyad()} to create a
@@ -38,7 +37,7 @@ public class Dyad {
 	 */
 	public void getStream(DyadRequestCallback foo, Handler handler) {
 		DyadRequest request = new DyadStreamRequest();
-		client.asyncExecute(request, account, foo, handler);
+		account.client.asyncExecute(request, account, foo, handler);
 	}
 
 	public String getId() {

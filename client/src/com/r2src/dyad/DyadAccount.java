@@ -1,16 +1,8 @@
 package com.r2src.dyad;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.HttpParams;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -41,26 +33,24 @@ import com.google.android.gcm.GCMRegistrar;
  * All the methods of this class are non-blocking and safe to call from the UI
  * thread.
  */
-public class DyadAccount {
+public abstract class DyadAccount {
 	
 	private final String senderId;
 	private final HttpHost host;
-	private String sessionToken;
+	
+	private volatile String sessionToken;
+	private volatile String googleAccountName;
+
+	DyadClient client = new DyadClient();
+	
 	private List<Dyad> dyads;
-	private volatile DefaultHttpClient client;
-	public final ExecutorService executor = Executors.newCachedThreadPool();
+	
+	public abstract void onRegistered();
+	public abstract void onRegistrationFailed(Exception e);
 
-	/**
-	 * Broadcasted when the registration process succeeded.
-	 * The Intent includes a field {@link #KEY_GOOGLE_ACCOUNT_NAME}.
-	 */
-	public static final String ACTION_REGISTERED_INTENT = "com.r2src.dyad.REGISTERED";
-	/**
-	 * Broadcasted when the registration process could not be finished.
-	 * The Intent includes a field {@link #KEY_EXCEPTION}
-	 */
-	public static final String ACTION_REGISTRATION_FAILED_INTENT = "com.r2src.dyad.REGISTRATION_FAILED";
-
+	public abstract void onGCMRegistered();
+	public abstract void onGCMRegistrationFailed(String error);
+	
 	/**
 	 * Broadcasted when the registration process succeeded.
 	 * The Intent includes a field {@link #KEY_GOOGLE_ACCOUNT_NAME}.
@@ -72,10 +62,6 @@ public class DyadAccount {
 	 */
 	public static final String ACTION_GCM_REGISTRATION_FAILED_INTENT = "com.r2src.dyad.GCM_REGISTRATION_FAILED";
 	
-	/**
-	 * Bundle key used for the Google account name in Intents that send information about the registration process.
-	 */
-	public static final String KEY_GOOGLE_ACCOUNT_NAME = "googleAccountName";
 	/**
 	 * Bundle key used to communicate an exception message.
 	 */
@@ -89,8 +75,8 @@ public class DyadAccount {
 	 * @param host
 	 *            The host that runs Dyad Server.
 	 */
-	public DyadAccount(String senderId, HttpHost host) {
-		this(senderId, host, null);
+	public DyadAccount(String senderId, HttpHost host, Context context) {
+		this(senderId, host, context, null);
 	}
 
 	/**
@@ -105,19 +91,30 @@ public class DyadAccount {
 	 * @param sessionToken
 	 *            The session token of an existing Dyad Account.
 	 */
-	public DyadAccount(String senderId, HttpHost host, String sessionToken) {
+	public DyadAccount(String senderId, HttpHost host, Context context, String sessionToken) {
 		if (senderId == null) throw new IllegalArgumentException("Sender ID is null");
 		this.senderId = senderId;
 		if (host == null) throw new IllegalArgumentException("Host is null");
 		this.host = host;
 		this.sessionToken = sessionToken; // allowed to be null
 		
-		// initialize thread-safe http client
-		client = new DefaultHttpClient();
-		ClientConnectionManager mgr = client.getConnectionManager();
-		HttpParams params = client.getParams();
-		client = new DefaultHttpClient(new ThreadSafeClientConnManager(params,
-				mgr.getSchemeRegistry()), params);
+		// register the various intents
+		IntentFilter filter = new IntentFilter();
+		filter.addAction(ACTION_GCM_REGISTERED_INTENT);
+		filter.addAction(ACTION_GCM_REGISTRATION_FAILED_INTENT);
+		LocalBroadcastManager.getInstance(context).registerReceiver(new BroadcastReceiver() {
+
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				String action = intent.getAction();
+				if (ACTION_GCM_REGISTERED_INTENT.equals(action)) {
+					onGCMRegistered();
+				} else if (ACTION_GCM_REGISTRATION_FAILED_INTENT.equals(action)) {
+					onGCMRegistrationFailed(intent.getStringExtra(KEY_EXCEPTION));
+				}
+			}
+			
+		}, filter);
 	}
 
 	/**
@@ -137,10 +134,24 @@ public class DyadAccount {
 	/**
 	 * Sets the account's session token.
 	 */
-	public void setSessionToken(String token) {
+	public synchronized void setSessionToken(String token) {
 		sessionToken = token;
 	}
+	
+	/**
+	 * Returns the account's name.
+	 */
+	public String getGoogleAccountName() {
+		return googleAccountName;
+	}
 
+	/**
+	 * Set the account's name
+	 */
+	protected synchronized void setGoogleAccountName(String name) {
+		googleAccountName = name;		
+	}
+	
 	/**
 	 * Registers the account with the Dyad Server. Returns immediately and will
 	 * broadcast either a {@link #ACTION_REGISTERED_INTENT} when finished, or a
@@ -158,7 +169,7 @@ public class DyadAccount {
 
 		AccountManager.get(activity).getAuthTokenByFeatures("com.google",
 				"oauth2:https://www.googleapis.com/auth/userinfo.email", null,
-				activity, null, null, new AccountRegistrationCallback(activity), new Handler());
+				activity, null, null, new AccountRegistrationCallback(), new Handler());
 	}
 
 	/**
@@ -195,7 +206,7 @@ public class DyadAccount {
 
 		manager.getAuthToken(account,
 				"oauth2:https://www.googleapis.com/auth/userinfo.email", null,
-				activity, new AccountRegistrationCallback(activity), new Handler());
+				activity, new AccountRegistrationCallback(), new Handler());
 	}
 
 	/**
@@ -206,32 +217,26 @@ public class DyadAccount {
 	 * @throws UnsupportedOperationException If the device running the app cannot handle GCM appropriately.
 	 * @throws IllegalStateException If the Android Manifest doesn't meet all the GCM requirements.
 	 */
-	public void registerGCM(final Activity activity) {
-		if (activity == null)
-			throw new IllegalArgumentException("activity is null");
+	public void registerGCM(final Context context) {
+		if (context == null)
+			throw new IllegalArgumentException("context is null");
 
-		GCMRegistrar.checkDevice(activity);
-		GCMRegistrar.checkManifest(activity);
-		final String regId = GCMRegistrar.getRegistrationId(activity);
+		GCMRegistrar.checkDevice(context);
+		GCMRegistrar.checkManifest(context);
+		final String regId = GCMRegistrar.getRegistrationId(context);
 		if (regId.equals("")) {
-			GCMRegistrar.register(activity, senderId);
+			GCMRegistrar.register(context, senderId);
 		} else {
 			DyadRequest request = new DyadGCMRequest(regId);
-			asyncExecute(request, this, new DyadRequestCallback() {
-				LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(activity);
+			client.asyncExecute(request, this, new DyadRequestCallback() {
 				@Override
 				public void onFinished() {
-					lbm.sendBroadcast(new Intent(ACTION_GCM_REGISTERED_INTENT));
+					onGCMRegistered();
 				}
 
 				@Override
 				public void onError(Exception e) {
-					lbm.sendBroadcast(new Intent(ACTION_GCM_REGISTRATION_FAILED_INTENT).putExtra(KEY_EXCEPTION, e.getLocalizedMessage()));
-				}
-
-				@Override
-				public void onCanceled() {
-					lbm.sendBroadcast(new Intent(ACTION_GCM_REGISTRATION_FAILED_INTENT));
+					onGCMRegistrationFailed(e.getLocalizedMessage());
 				}
 			}, new Handler());
 		}
@@ -264,7 +269,7 @@ public class DyadAccount {
 						}
 					});
 				}
-				asyncExecute(request, DyadAccount.this, foo, handler);
+				client.asyncExecute(request, DyadAccount.this, foo, handler);
 
 			}
 		}, new IntentFilter("com.r2src.dyad.action.GOT_SHARED_SECRET"));
@@ -279,7 +284,7 @@ public class DyadAccount {
 		if (sessionToken == null)
 			throw new IllegalArgumentException("Session Token is null");
 		DyadRequest request = new DyadsRequest(sessionToken);
-		asyncExecute(request, this, foo, handler);
+		client.asyncExecute(request, this, foo, handler);
 	}
 
 	/**
@@ -306,12 +311,6 @@ public class DyadAccount {
 	 * or REGISTRATION_FAILED intents.
 	 */
 	private class AccountRegistrationCallback implements AccountManagerCallback<Bundle> {
-		LocalBroadcastManager lbm;
-		
-		public AccountRegistrationCallback(Context context) {
-			super();
-			lbm = LocalBroadcastManager.getInstance(context);
-		}
 		
 		@Override
 		public void run(AccountManagerFuture<Bundle> future) {
@@ -319,85 +318,31 @@ public class DyadAccount {
 			try {
 				b = future.getResult();
 				String authToken = b.getString(AccountManager.KEY_AUTHTOKEN);
-				final String accountName = b
-						.getString(AccountManager.KEY_ACCOUNT_NAME);
+				final String accountName = b.getString(AccountManager.KEY_ACCOUNT_NAME);
 
 				// perform the API request in a separate thread
 				DyadRequest request = new DyadRegistrationRequest(authToken);
-				asyncExecute(request, DyadAccount.this, new DyadRequestCallback() {
+				client.asyncExecute(request, DyadAccount.this, new DyadRequestCallback() {
 				
 					@Override
 					public void onFinished() {
-						lbm.sendBroadcast(new Intent(ACTION_REGISTERED_INTENT).putExtra(KEY_GOOGLE_ACCOUNT_NAME, accountName));
+						DyadAccount.this.setGoogleAccountName(accountName);
+						DyadAccount.this.onRegistered();
 					}
 
 					@Override
 					public void onError(Exception e) {
-						lbm.sendBroadcast(new Intent(ACTION_REGISTRATION_FAILED_INTENT).putExtra(KEY_EXCEPTION, e.getLocalizedMessage()));
+						DyadAccount.this.onRegistrationFailed(e);
 					}
-
-					@Override
-					public void onCanceled() {
-						lbm.sendBroadcast(new Intent(ACTION_REGISTRATION_FAILED_INTENT));
-					}
+					
 				}, new Handler());
 			} catch (Exception e) {
-				lbm.sendBroadcast(new Intent(ACTION_REGISTRATION_FAILED_INTENT).putExtra(KEY_EXCEPTION, e.getLocalizedMessage()));
+				DyadAccount.this.onRegistrationFailed(e);
 			}
 		}
-	}
-	/**
-	 * Helper method to spawn a worker thread making the web api request. TODO:
-	 * It is also possible to let asyncRequest return a Future<HttpResponse>
-	 * Simply change the return type and change the Runnable into a Callable.
-	 */
-	public void asyncExecute(final DyadRequest request,
-			final DyadAccount dyadAccount, final DyadRequestCallback callback, final Handler handler) {
-		if (handler == null)
-			throw new IllegalArgumentException("handler is null");
-		if (callback == null)
-			throw new IllegalArgumentException("foo is null");
-
-		// thread magic!
-		executor.submit(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					HttpResponse response = client.execute(dyadAccount.getHost(),
-							request.getHttpRequest());
-					request.onFinished(response, dyadAccount);
-					handler.post(new Runnable() {
-						public void run() {
-							callback.onFinished();
-						}
-					});
-				} catch (final IOException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							callback.onError(e);
-						}
-					});
-				} catch (final DyadServerException e) {
-					handler.post(new Runnable() {
-						public void run() {
-							callback.onError(e);
-						}
-					});
-				}
-			}
-		});
-	}
-
-	public HttpResponse execute(DyadRequest request, DyadAccount dyadAccount)
-			throws IOException, DyadServerException {
-		HttpResponse response = client.execute(dyadAccount.getHost(),
-				request.getHttpRequest());
-		request.onFinished(response, dyadAccount);
-		return response;
 	}
 	
 	private class NotRegisteredException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
-
 }

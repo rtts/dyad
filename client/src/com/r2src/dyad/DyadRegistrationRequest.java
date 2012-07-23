@@ -12,7 +12,6 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-
 /**
  * A request to register an account with the Dyad Server. Also valid for already
  * registered accounts.
