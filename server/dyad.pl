@@ -3,7 +3,7 @@ use strict;
 
 use Dyad::Server;
 use FCGI;
-use DBI;
+use MongoDB::Connection;
 
 my $QUEUE_SIZE = 100;
 my $DB_NAME    = 'dyad';

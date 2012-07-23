@@ -1,5 +1,6 @@
 package com.r2src.dyad;
 
+
 import android.os.Handler;
 
 /**
@@ -18,12 +19,14 @@ import android.os.Handler;
  */
 public class Dyad {
 	private DyadAccount account;
-
+	private String id;
+	private DyadClient client = DyadClient.getInstance();
+	
 	/**
 	 * Protected constructor -- call {@link DyadAccount.newDyad()} to create a
 	 * new Dyad.
 	 */
-	protected Dyad(DyadAccount account) {
+	protected Dyad(DyadAccount account, String id) {
 		if (account == null)
 			throw new IllegalArgumentException("account can't be null");
 		this.account = account;
@@ -33,9 +36,12 @@ public class Dyad {
 	 * Get a stream for communication
 	 * 
 	 */
-	public void getStream(Foo foo, Handler handler) {
-		// TODO method stub
+	public void getStream(DyadRequestCallback foo, Handler handler) {
 		DyadRequest request = new DyadStreamRequest();
-		account.client.asyncRequest(request, account, foo, handler);
+		client.asyncExecute(request, account, foo, handler);
+	}
+
+	public String getId() {
+		return id;
 	}
 }
