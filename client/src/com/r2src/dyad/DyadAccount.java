@@ -95,6 +95,7 @@ public abstract class DyadAccount {
 		if (senderId == null) throw new IllegalArgumentException("Sender ID is null");
 		this.senderId = senderId;
 		if (host == null) throw new IllegalArgumentException("Host is null");
+		if (context == null) throw new IllegalArgumentException("Context is null");
 		this.host = host;
 		this.sessionToken = sessionToken; // allowed to be null
 		
@@ -102,7 +103,8 @@ public abstract class DyadAccount {
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(ACTION_GCM_REGISTERED_INTENT);
 		filter.addAction(ACTION_GCM_REGISTRATION_FAILED_INTENT);
-		LocalBroadcastManager.getInstance(context).registerReceiver(new BroadcastReceiver() {
+		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
+		lbm.registerReceiver(new BroadcastReceiver() {
 
 			@Override
 			public void onReceive(Context context, Intent intent) {
