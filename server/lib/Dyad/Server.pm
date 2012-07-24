@@ -20,6 +20,7 @@ Perhaps a little code snippet.
 
 use v5.14;
 use strict;
+use Log::Any qw($log);
 use JSON;
 use MongoDB;
 use HTTP::Status qw(:constants status_message);
@@ -68,7 +69,9 @@ sub new {
 
     $self->{db} = $kwargs{mongodb} and $self->{db}->isa("MongoDB::Database")
       or die "You have to pass a MongoDB instance to Dyad::Server::new\n";
-
+	
+	$log->info("Dyad Server ready.");
+	
     bless $self, $class;
 }
 
@@ -81,68 +84,96 @@ Processes an FCGI request.
 sub process_request {
     my $self = shift;
 
+	$log->info("Received $ENV{REQUEST_METHOD} request for $ENV{REQUEST_URI}");
+
     for my $call ( @{$api} ) {
         if (    $ENV{REQUEST_METHOD} eq $call->[1]
             and $ENV{REQUEST_URI} =~ $call->[2] )
         {
+        	$log->debug("Request matches entry '$call->[2]' in the dispatch table.");
 
             my $google_id;
-            if ( $call->[0] ) {    # if authorization required
-                my $session_token = $ENV{HTTP_X_DYAD_AUTHORIZATION}
-                  or return http_response( 401,
-                    "Missing X-Dyad-Authorization header." );
+            if ( $call->[0] ) {
+            	$log->debug("Request requires authorization.");
+            
+                my $session_token = $ENV{HTTP_X_DYAD_AUTHORIZATION};
+				unless ($session_token) {
+					$log->warning("Authorization failed: session token not present.");
+	                return http_response( 401, "Missing X-Dyad-Authorization header." );
+				}
 
+				$log->debug("Validating session token...");
                 # note: Devel::Cover fails after the following statement
                 # (please tell me why!)
                 my $user =
                   $self->{db}->users->find_one(
-                    { session_token => $session_token } )
-                  or return http_response( 401,
-                    "Invalid session token. Please re-register." );
-
+                    { session_token => $session_token } );
+                unless ($user) {
+                	$log->warning("Authorization failed: session token invalid.");
+                	return http_response( 401, "Invalid session token. Please re-register." );
+                }
+                
                 $google_id = $user->{google_id};
+                unless ($google_id) {
+                	$log->error("User with id $user->{id} has no attribute google_id! Have you been messing with the database?");
+                	return http_response(500, "We're really sorry. This shouldn't have happened.");
+                }
+
+                $log->debug("Authorization succeeded.");
             }
 
+			$log->debug("Validating request parameters...");
+			
             given ( $call->[1] ) {
                 when ( 'GET' ) {
-                    return http_response( 400,
-                        "Request contains a body, but shouldn't" )
-                      if $ENV{CONTENT_LENGTH};
+                	if ($ENV{CONTENT_LENGTH}) {
+						$log->warning("GET request has a body, aborting.");                    	
+                    	return http_response( 400,
+                        	"Request contains a body, but shouldn't" )
+                	}
 
+					$log->debug("GET request is valid, dispatching...");
                     return http_response(
                         $call->[3]->( $self->{db}, $google_id ) );
                 }
                 when ( 'POST' ) {
                     my $body = &stdin;
-                    return http_response( 400,
-                        "Body is empty or wrong content length." )
-                      if not defined $body;
+                    
+                    unless (defined $body) {
+                    	$log->warning("POST request has incorrect (or no) content length, aborting.");
+	                    return http_response( 400,
+    	                    "Body is empty or wrong content length." )
+                    }
 
                     # parse request body into json
-                    $body = json_to_hashref($body)
-                      or return http_response( 400, "Invalid JSON." );
-
-                    # check if the required parameters are present,
-                    # and store them in @params
+                    $body = json_to_hashref($body);
+                    unless ($body) {
+                    	$log->warning("Request body contains invalid JSON, aborting.");
+                    	return http_response( 400, "Invalid JSON." );
+                	}
+                	
+					$log->debug("Looking for the following parameters: " . join(", ", @{$call->[4]}));
                     my @params;
                     for my $req ( @{$call->[4]} ) {
                         if ( defined $body->{$req} ) {
                             push @params, $body->{$req};
                         }
                         else {
+                        	$log->warning("Missing required parameter $req, aborting.");
                             return http_response( 400,
                                 "Missing required parameter '$req'." );
                         }
                     }
 
-                    # run api function with the neccesary parameters
+                    $log->debug("POST request is valid, dispatching...");
                     return http_response(
                         $call->[3]->( $self->{db}, @params, $google_id ) );
                 }
             }
         }
     }
-    return http_response( 404, "API function not found." );
+    $log->warning("Unknown request, returning 404.");
+    return http_response( 404, "Unknown request." );
 }
 
 =head1 INTERNAL SUBROUTINES
@@ -153,6 +184,7 @@ import and use them directly.
 =cut
 
 sub register;
+sub register_gcm;
 sub bond;
 sub stdin;
 sub http_response;
@@ -314,11 +346,16 @@ code is omitted or invalid.
 =cut
 
 sub http_response {
-    my $status = ( shift or 500 );
-    $status = 500 unless status_message $status;
-    my $body = $status == 500 ? "Internal Server Error" : shift;
-    my $type = "text/plain";
+    my $status = shift;
+    my $body = shift;
+	my $status_message = status_message $status if defined $status;
+	
+    unless ($status_message) {
+    	$status = 500;
+    	$body = $status_message = "Internal Server Error";
+    }
 
+    my $type = "text/plain";
     if ( ref $body eq 'HASH' ) {
         $body = encode_json $body;
         $type = "application/json";
@@ -326,6 +363,8 @@ sub http_response {
 
     my $result = "Status: $status\r\n";
     $result .= "Content-type: $type\r\n\r\n$body" if $body;
+    
+    $log->info("Returned $status $status_message");
     return $result;
 }
 
