@@ -2,18 +2,15 @@ package com.r2src.dyad.example;
 
 import org.apache.http.HttpHost;
 
-import com.r2src.dyad.DyadAccount;
-import com.r2src.dyad.R;
-import com.r2src.dyad.R.layout;
-import com.r2src.dyad.R.menu;
-
-import android.os.Bundle;
 import android.app.Activity;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.support.v4.app.NavUtils;
+import android.widget.TextView;
+
+import com.r2src.dyad.DyadAccount;
+import com.r2src.dyad.R;
 
 public class MainActivity2 extends Activity {
 	DyadAccount account;
@@ -23,7 +20,7 @@ public class MainActivity2 extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-    	account = new DyadAccount("137457006510", new HttpHost("edge", 9951), this) {
+    	account = new DyadAccount("137457006510", new HttpHost("goliath", 9951), this) {
     		@Override
     		public void onRegistered() {
     			findViewById(R.id.txt_registration_succeeded).setVisibility(View.VISIBLE);
@@ -31,8 +28,10 @@ public class MainActivity2 extends Activity {
     		
     		@Override
     		public void onRegistrationFailed(Exception e) {
-    			findViewById(R.id.txt_registration_failed).setVisibility(View.VISIBLE);
-    			Log.e("MAINACTIVITY", e.getLocalizedMessage());
+    			TextView v = (TextView) findViewById(R.id.txt_registration_failed);
+    			v.setVisibility(View.VISIBLE);
+    			v.setText(e.getClass().toString() + ": " + e.getLocalizedMessage());
+    			if (e.getLocalizedMessage() != null) Log.e("MAINACTIVITY", e.getLocalizedMessage());
     		}
 
     		@Override
@@ -42,7 +41,7 @@ public class MainActivity2 extends Activity {
     		}
 
     		@Override
-    		public void onGCMRegistrationFailed(String error) {
+    		public void onGCMRegistrationFailed(Exception e) {
     			// TODO Auto-generated method stub
     			
     		}

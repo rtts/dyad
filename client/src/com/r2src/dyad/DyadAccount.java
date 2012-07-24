@@ -49,7 +49,7 @@ public abstract class DyadAccount {
 	public abstract void onRegistrationFailed(Exception e);
 
 	public abstract void onGCMRegistered();
-	public abstract void onGCMRegistrationFailed(String error);
+	public abstract void onGCMRegistrationFailed(Exception e);
 	
 	/**
 	 * Broadcasted when the registration process succeeded.
@@ -112,7 +112,7 @@ public abstract class DyadAccount {
 				if (ACTION_GCM_REGISTERED_INTENT.equals(action)) {
 					onGCMRegistered();
 				} else if (ACTION_GCM_REGISTRATION_FAILED_INTENT.equals(action)) {
-					onGCMRegistrationFailed(intent.getStringExtra(KEY_EXCEPTION));
+					onGCMRegistrationFailed(new GCMException(intent.getStringExtra(KEY_EXCEPTION)));
 				}
 			}
 			
@@ -238,7 +238,7 @@ public abstract class DyadAccount {
 
 				@Override
 				public void onError(Exception e) {
-					onGCMRegistrationFailed(e.getLocalizedMessage());
+					onGCMRegistrationFailed(e);
 				}
 			}, new Handler());
 		}
@@ -347,4 +347,11 @@ public abstract class DyadAccount {
 	private class NotRegisteredException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
+	private class GCMException extends Exception {
+		public GCMException(String error) {
+			super(error);
+		}
+		private static final long serialVersionUID = 1L;
+	}
+
 }

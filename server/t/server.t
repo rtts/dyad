@@ -2,8 +2,8 @@ use strict;
 use JSON;
 use lib 't';    # the Mock::Google module lives in the test directory
 use Mock::Google;
-use Test::More tests => 57;
-use Dyad::Server qw(register bond http_response json_to_hashref);
+use Test::More tests => 61;
+use Dyad::Server qw(register register_gcm bond http_response json_to_hashref);
 
 my $PORT = 8899;
 $Dyad::Server::GOOGLE_URL = "http://localhost:$PORT";
@@ -139,7 +139,7 @@ $users->remove;
 my $pid = Mock::Google->new($PORT)->background();
 
 # first registration
-my ( $status, $body ) = register $db, 'valid_token', 'c2dm_id';
+my ( $status, $body ) = register $db, 'valid_token';
 is $status, 200, "Registering with a valid token succeeds.";
 ok defined $body, "There is a body in the response";
 is ref $body, 'HASH', "The body is a hashref.";
@@ -153,10 +153,9 @@ ok defined $user, "After registering the user is present in the database.";
 is undef, $cursor->next, "There is only one user inserted in the database.";
 is $user->{google_id}, 1, "The id returned by the google server is stored.";
 is $user->{session_token}, $stoken, "A session token is generated and stored.";
-is $user->{c2dm_id}, 'c2dm_id', "The right c2dm_id is stored.";
 
 # re-registration
-( $status, $body ) = register $db, 'valid_token', 'new_c2dm_id';
+( $status, $body ) = register $db, 'valid_token';
 is $status, 200, "Re-registering with a valid token succeeds.";
 ok defined $body, "There is a body in the response";
 like $body->{session_token}, qr/^.{32}$/,
@@ -171,16 +170,34 @@ is undef, $cursor->next, "There is still only one user in the database.";
 is $user->{google_id}, 1, "The id returned by the google server is stored.";
 is $user->{session_token}, $body->{session_token},
   "A new session token is generated and stored.";
-is $user->{c2dm_id}, 'new_c2dm_id', "The new c2dm_id is stored.";
 
 # invalid registration
 $users->remove;
-( $status, $body ) = register $db, 'invalid_token', 'c2dm_id';
+( $status, $body ) = register $db, 'invalid_token';
 is $status, 401, "Registering with a invalid token fails.";
 ok defined $body, "There is a body in the response";
 is undef, $users->find_one, "Failed registrations do not touch the database.";
 
 kill 15, $pid;
+
+#########################
+# Tests of register_gcm #
+#########################
+
+$users->remove;
+$users->insert({ google_id => 1, session_token => 'a_defined_token' } );
+( $status, $body ) = register_gcm $db, 'gcm_id', 1;
+is $status, 200, "Registering a non-empty GCM id returns 200.";
+ok defined $body, "There is a body in the response.";
+$user = $users->find_one;
+is $user->{gcm_id}, 'gcm_id', "Registered GCM id is set in the database.";
+
+( $status, $body ) = register_gcm $db, '', 1;
+is $status, 400, "Registering a empty GCM id returns 400.";
+ok defined $body, "There is a body in the response.";
+$user = $users->find_one;
+is $user->{gcm_id}, 'gcm_id', "Existing GCM id is untouched in the database.";
+
 
 #################
 # Tests of bond #

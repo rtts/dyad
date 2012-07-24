@@ -39,6 +39,12 @@ our $api = [
         \&register => [ 'token', 'c2dm_id' ]
     ],
 
+	[
+        1,    # authorization required
+		POST => qr(^/v1/register_gcm$),
+		\&register_gcm => ['gcm_id']
+	],
+
     [
         1,    # authorization required
         POST   => qr(^/v1/bond$),
@@ -153,7 +159,7 @@ sub http_response;
 sub json_to_hashref;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(register bond stdin http_response json_to_hashref);
+our @EXPORT_OK = qw(register register_gcm bond stdin http_response json_to_hashref);
 
 =head2 register
 
@@ -167,7 +173,6 @@ error string.
 sub register {
     my $db      = shift;
     my $token   = shift;
-    my $c2dm_id = shift;
 
     my $request = HTTP::Request->new(
         GET => $GOOGLE_URL,
@@ -186,7 +191,6 @@ sub register {
             { google_id => $google_id },
             {
                 '$set' => {
-                    c2dm_id       => $c2dm_id,
                     session_token => $session_token
                 }
             },
@@ -198,6 +202,35 @@ sub register {
     else {
         return 401, "Auth token rejected by Google.";
     }
+}
+
+=head2 register_gcm
+
+Adds the supplied gcm id to the database.
+
+=cut
+
+sub register_gcm {
+	my $db = shift;
+	my $gcm_id = shift;
+	my $google_id = shift;
+	
+    if ( $gcm_id ) {
+	    $db->users->update(
+            { google_id => $google_id },
+            {
+                '$set' => {
+                    gcm_id => $gcm_id
+                }
+            }
+        );
+        return 200, "GCM id has been set.";
+    }
+    else {
+    	return 400, "GCM id should not be empty.";
+    }
+
+	
 }
 
 =head2 bond

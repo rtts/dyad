@@ -9,6 +9,12 @@ import com.r2src.dyad.DyadAccount;
 import com.r2src.dyad.DyadGCMRequest;
 import com.r2src.dyad.DyadRequest;
 
+
+/**
+ * The service needed for GCM. Doesn't do anything by itself, but re-broadcasts all events to
+ * be picked up by a {@link DyadAccount} object
+ *
+ */
 public class IntentService extends GCMBaseIntentService {
 
 	protected IntentService(String senderId) {
