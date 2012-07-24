@@ -43,7 +43,7 @@
         <uses-library android:name="android.test.runner" />
 
         <activity
-            android:name=".example.MainActivity2"
+            android:name=".example.MainActivity"
             android:label="@string/title_activity_main_activity2" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

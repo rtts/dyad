@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="register">Register</string>
     <string name="menu_settings">Menu Settings</string>
-    <string name="hello_world">Hello world!</string>
-    <string name="title_activity_main_activity2">MainActivity2</string>
+    <string name="title_activity_main_activity2">Testing Registration</string>
 
 </resources>
