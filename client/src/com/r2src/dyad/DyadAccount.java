@@ -16,6 +16,7 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 
 import com.google.android.gcm.GCMRegistrar;
 
@@ -33,72 +34,66 @@ import com.google.android.gcm.GCMRegistrar;
  * All the methods of this class are non-blocking and safe to call from the UI
  * thread.
  */
-public abstract class DyadAccount {
+public class DyadAccount {
 	
-	private final String senderId;
+	private static final String TAG = "DyadAccount";
+
 	private final HttpHost host;
-	
+	private final DyadListener listener;
+
 	private volatile String sessionToken;
 	private volatile String googleAccountName;
 
 	DyadClient client = new DyadClient();
-	
-	private List<Dyad> dyads;
-	
-	public abstract void onRegistered();
-	public abstract void onRegistrationFailed(Exception e);
 
-	public abstract void onGCMRegistered();
-	public abstract void onGCMRegistrationFailed(Exception e);
-	
+	private List<Dyad> dyads;
+
 	/**
-	 * Broadcasted when the registration process succeeded.
-	 * The Intent includes a field {@link #KEY_GOOGLE_ACCOUNT_NAME}.
+	 * Broadcasted when the registration process succeeded. The Intent includes
+	 * a field {@link #KEY_GOOGLE_ACCOUNT_NAME}.
 	 */
 	public static final String ACTION_GCM_REGISTERED_INTENT = "com.r2src.dyad.GCM_REGISTERED";
 	/**
-	 * Broadcasted when the registration process could not be finished.
-	 * The Intent includes a field {@link #KEY_EXCEPTION}
+	 * Broadcasted when the registration process could not be finished. The
+	 * Intent includes a field {@link #KEY_EXCEPTION}
 	 */
 	public static final String ACTION_GCM_REGISTRATION_FAILED_INTENT = "com.r2src.dyad.GCM_REGISTRATION_FAILED";
-	
+
 	/**
 	 * Bundle key used to communicate an exception message.
 	 */
 	public static final String KEY_EXCEPTION = "exception";
 
 	/**
-	 * Creates a local account that has not yet been registered with the server.
-	 * 
-	 * @param senderId
-	 * 	          The GCM project ID from the URL at the API Console
-	 * @param host
-	 *            The host that runs Dyad Server.
-	 */
-	public DyadAccount(String senderId, HttpHost host, Context context) {
-		this(senderId, host, context, null);
-	}
-
-	/**
-	 * (Re)creates an account that has already been registered with the server.
-	 * 
-	 * @param senderId
-	 * 	          The GCM project ID from the URL at the API Console
+	 * Creates a Dyad Account.
+	 * <p>
+	 * Call {@link #register} to let this Dyad Account register itself with the
+	 * Dyad Server.
 	 * 
 	 * @param host
-	 *            The host that runs Dyad Server.
-	 * 
+	 *            The {@link HttpHost} representing Dyad Server's location.
+	 *            Required.
+	 * @param listener
+	 *            Handles Dyad events. Required.
+	 * @param context
+	 *            Used for registering a local broadcast receiver that catches
+	 *            GCM broadcasts. Required.
 	 * @param sessionToken
-	 *            The session token of an existing Dyad Account.
+	 *            Authenticates requests for the Dyad Server. If provided,
+	 *            consider this account registered. Optional.
 	 */
-	public DyadAccount(String senderId, HttpHost host, Context context, String sessionToken) {
-		if (senderId == null) throw new IllegalArgumentException("Sender ID is null");
-		this.senderId = senderId;
-		if (host == null) throw new IllegalArgumentException("Host is null");
-		if (context == null) throw new IllegalArgumentException("Context is null");
+	public DyadAccount(HttpHost host, DyadListener dyadListener,
+			Context context, String sessionToken) {
+		if (host == null)
+			throw new IllegalArgumentException("Host is null");
+		if (dyadListener == null)
+			throw new IllegalArgumentException("Dyad Listener is null");
+		if (context == null)
+			throw new IllegalArgumentException("Context is null");
 		this.host = host;
-		this.sessionToken = sessionToken; // allowed to be null
-		
+		this.listener = dyadListener;
+		this.sessionToken = sessionToken;
+
 		// register the various intents
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(ACTION_GCM_REGISTERED_INTENT);
@@ -110,13 +105,95 @@ public abstract class DyadAccount {
 			public void onReceive(Context context, Intent intent) {
 				String action = intent.getAction();
 				if (ACTION_GCM_REGISTERED_INTENT.equals(action)) {
-					onGCMRegistered();
+					listener.onGCMRegistered();
 				} else if (ACTION_GCM_REGISTRATION_FAILED_INTENT.equals(action)) {
-					onGCMRegistrationFailed(new GCMException(intent.getStringExtra(KEY_EXCEPTION)));
+					listener.onGCMRegistrationFailed(new GCMException(intent
+							.getStringExtra(KEY_EXCEPTION)));
 				}
 			}
-			
+
 		}, filter);
+	}
+
+	/**
+	 * Registers the Dyad Account with the Dyad Server.
+	 * <p>
+	 * This method calls {@link AccountManager#getAuthTokenByFeatures}, which
+	 * lets the user choose a Google account to register with the Dyad server.
+	 * <p>
+	 * After registration, {@link DyadListener#onRegistered} is called when the
+	 * registration was successful, and
+	 * {@link DyadListener#onRegistrationFailed} when it failed.
+	 * <p>
+	 * This is a non-blocking call. It can be called safely from the main
+	 * thread.
+	 * 
+	 * @param activity
+	 *            The currently active activity, that will be used to let the
+	 *            user choose a Google Account. Required.
+	 */
+	public void register(final Activity activity) {
+		if (activity == null)
+			throw new IllegalArgumentException("activity is null");
+
+		Log.v(TAG, "Registering...");
+		Log.v(TAG, "Looking for Google Account...");
+		AccountManager.get(activity).getAuthTokenByFeatures("com.google",
+				"oauth2:https://www.googleapis.com/auth/userinfo.email", null,
+				activity, null, null, new AccountRegistrationCallback(),
+				new Handler());
+	}
+
+	/**
+	 * Registers the Dyad Account with the Dyad Server.
+	 * <p>
+	 * After registration, {@link DyadListener#onRegistered} is called when the
+	 * registration was successful, and
+	 * {@link DyadListener#onRegistrationFailed} when it failed.
+	 * <p>
+	 * This is a non-blocking call. It can be called safely from the main
+	 * thread.
+	 * 
+	 * @param activity
+	 *            The currently active activity, that will be used to let the
+	 *            user choose a Google Account. Required.
+	 * @param googleAccountName
+	 *            The name of the Google Account that the user wants to use for
+	 *            the registration. Optional (if null, calls {@link #register(Activity)}).
+	 * 
+	 * @throws GoogleAccountException
+	 *             If the given account name is not present in the
+	 *             device's Google accounts.
+	 */
+	public void register(final Activity activity, String googleAccountName) throws GoogleAccountException {
+		if (activity == null)
+			throw new IllegalArgumentException("activity is null");
+		if (googleAccountName == null) {
+			Log.v(TAG,
+					"Register method called with empty Google Account Name, calling Register(Activity)...");
+			register(activity);
+		}
+
+		Log.v(TAG, "Looking for Google Account...");
+		Account account = null;
+		AccountManager manager = AccountManager.get(activity);
+		Account[] accounts = manager.getAccountsByType("com.google");
+		for (Account a : accounts) {
+			if (a.name.equals(googleAccountName)) {
+				account = a;
+				break;
+			}
+		}
+		if (account == null) {
+			Log.v(TAG, "Google Account not found...");
+			throw new GoogleAccountException("Google account " + googleAccountName
+					+ " does not exist");
+		}
+		Log.v(TAG, "Google Account found...");
+		Log.v(TAG, "Retrieving oauth2 token for this account...");
+		manager.getAuthToken(account,
+				"oauth2:https://www.googleapis.com/auth/userinfo.email", null,
+				activity, new AccountRegistrationCallback(), new Handler());
 	}
 
 	/**
@@ -139,7 +216,7 @@ public abstract class DyadAccount {
 	public synchronized void setSessionToken(String token) {
 		sessionToken = token;
 	}
-	
+
 	/**
 	 * Returns the account's name.
 	 */
@@ -151,75 +228,27 @@ public abstract class DyadAccount {
 	 * Set the account's name
 	 */
 	protected synchronized void setGoogleAccountName(String name) {
-		googleAccountName = name;		
-	}
-	
-	/**
-	 * Registers the account with the Dyad Server. Returns immediately and will
-	 * broadcast either a {@link #ACTION_REGISTERED_INTENT} when finished, or a
-	 * {@link #ACTION_REGISTRATION_FAILED_INTENT} on error.
-	 * <p>
-	 * This method calls the Account Manager's
-	 * {@link AccountManager#getAuthTokenByFeatures} method which lets the user
-	 * choose a Google account to register with the Dyad server. The chosen
-	 * account name will be available in the REGISTERED intent so you can store
-	 * it somewhere.
-	 */
-	public void register(final Activity activity) {
-		if (activity == null)
-			throw new IllegalArgumentException("activity is null");
-
-		AccountManager.get(activity).getAuthTokenByFeatures("com.google",
-				"oauth2:https://www.googleapis.com/auth/userinfo.email", null,
-				activity, null, null, new AccountRegistrationCallback(), new Handler());
-	}
-
-	/**
-	 * Registers the account with the Dyad Server. Returns immediately and will
-	 * broadcast either a {@link #ACTION_REGISTERED_INTENT} when finished, or a
-	 * {@link #ACTION_REGISTRATION_FAILED_INTENT} on error.
-	 * <p>
-	 * This method expects the Google account name to be registered as its
-	 * second argument. Useful if you already know which Google account to
-	 * register.
-	 * <p>
-	 * The chosen account name will be available in the REGISTERED intent so you
-	 * can store it somewhere.
-	 */
-	public void register(final Activity activity, String accountName) {
-		if (activity == null)
-			throw new IllegalArgumentException("activity is null");
-		if (accountName == null)
-			throw new IllegalArgumentException("accountName is null");
-
-		Account account = null;
-		AccountManager manager = AccountManager.get(activity);
-		Account[] accounts = manager.getAccounts();
-		for (Account a : accounts) {
-			if (a.name.equals(accountName)) {
-				account = a;
-				break;
-			}
-		}
-		if (account == null) {
-			throw new IllegalArgumentException("account " + accountName
-					+ " does not exist");
-		}
-
-		manager.getAuthToken(account,
-				"oauth2:https://www.googleapis.com/auth/userinfo.email", null,
-				activity, new AccountRegistrationCallback(), new Handler());
+		googleAccountName = name;
 	}
 
 	/**
 	 * Registers the device's GCM registration id with the Dyad Server. Upon
-	 * success, the ACTION_GCM_REGISTERED_INTENT will be broadcast. Otherwise, expect
-	 * an ACTION_GCM_REGISTRATION_FAILED_INTENT.
+	 * success, the ACTION_GCM_REGISTERED_INTENT will be broadcast. Otherwise,
+	 * expect an ACTION_GCM_REGISTRATION_FAILED_INTENT.
 	 * <p>
-	 * @throws UnsupportedOperationException If the device running the app cannot handle GCM appropriately.
-	 * @throws IllegalStateException If the Android Manifest doesn't meet all the GCM requirements.
+	 * 
+	 * @param senderId
+	 *            Identifies and authenticates this app when requesting a GCM
+	 *            registration id for the device. Required.
+	 * 
+	 * @throws UnsupportedOperationException
+	 *             If the device running the app cannot handle GCM
+	 *             appropriately.
+	 * @throws IllegalStateException
+	 *             If the Android Manifest doesn't meet all the GCM
+	 *             requirements.
 	 */
-	public void registerGCM(final Context context) {
+	public void registerGCM(final Context context, final String senderId) {
 		if (context == null)
 			throw new IllegalArgumentException("context is null");
 
@@ -233,12 +262,12 @@ public abstract class DyadAccount {
 			client.asyncExecute(request, this, new DyadRequestCallback() {
 				@Override
 				public void onFinished() {
-					onGCMRegistered();
+					listener.onGCMRegistered();
 				}
 
 				@Override
 				public void onError(Exception e) {
-					onGCMRegistrationFailed(e);
+					listener.onGCMRegistrationFailed(e);
 				}
 			}, new Handler());
 		}
@@ -253,8 +282,8 @@ public abstract class DyadAccount {
 	 * <p>
 	 * When the server receives two matching secrets, the Dyad is complete.
 	 */
-	public void requestDyad(Activity activity, Bonder bonder, final DyadRequestCallback foo,
-			final Handler handler) {
+	public void requestDyad(Activity activity, Bonder bonder,
+			final DyadRequestCallback foo, final Handler handler) {
 		LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(activity);
 		lbm.registerReceiver(new BroadcastReceiver() {
 
@@ -282,7 +311,8 @@ public abstract class DyadAccount {
 	/**
 	 * Fetches the list of Dyads from the server.
 	 */
-	public void getDyads(String sessionToken, DyadRequestCallback foo, Handler handler) {
+	public void getDyads(String sessionToken, DyadRequestCallback foo,
+			Handler handler) {
 		if (sessionToken == null)
 			throw new IllegalArgumentException("Session Token is null");
 		DyadRequest request = new DyadsRequest(sessionToken);
@@ -308,50 +338,71 @@ public abstract class DyadAccount {
 	}
 
 	/**
+	 * Registers the Google Account with the Dyad Server, using the retrieved
+	 * oauth2 token as authentication.
+	 * 
+	 * Calls {@link DyadListener#onRegistered} when registering with the Dyad
+	 * Server succeeds, {@link DyadListener#onRegistrationFailed} when it fails.
+	 * 
 	 * Used as the argument for {@link AccountManager#getAuthToken} and
-	 * {@link AccountManager#getAuthTokenByFeatures}. Broadcasts the REGISTERED
-	 * or REGISTRATION_FAILED intents.
+	 * {@link AccountManager#getAuthTokenByFeatures}.
+	 * 
+	 * 
+	 * 
+	 * auth token was
 	 */
-	private class AccountRegistrationCallback implements AccountManagerCallback<Bundle> {
-		
+	private class AccountRegistrationCallback implements
+			AccountManagerCallback<Bundle> {
+
 		@Override
 		public void run(AccountManagerFuture<Bundle> future) {
 			Bundle b;
 			try {
 				b = future.getResult();
 				String authToken = b.getString(AccountManager.KEY_AUTHTOKEN);
-				final String accountName = b.getString(AccountManager.KEY_ACCOUNT_NAME);
+				final String accountName = b
+						.getString(AccountManager.KEY_ACCOUNT_NAME);
 
 				// perform the API request in a separate thread
 				DyadRequest request = new DyadRegistrationRequest(authToken);
-				client.asyncExecute(request, DyadAccount.this, new DyadRequestCallback() {
-				
-					@Override
-					public void onFinished() {
-						DyadAccount.this.setGoogleAccountName(accountName);
-						DyadAccount.this.onRegistered();
-					}
+				client.asyncExecute(request, DyadAccount.this,
+						new DyadRequestCallback() {
 
-					@Override
-					public void onError(Exception e) {
-						DyadAccount.this.onRegistrationFailed(e);
-					}
-					
-				}, new Handler());
+							@Override
+							public void onFinished() {
+								DyadAccount.this
+										.setGoogleAccountName(accountName);
+								listener.onRegistered();
+							}
+
+							@Override
+							public void onError(Exception e) {
+								listener.onRegistrationFailed(e);
+							}
+
+						}, new Handler());
 			} catch (Exception e) {
-				DyadAccount.this.onRegistrationFailed(e);
+				listener.onRegistrationFailed(e);
 			}
 		}
 	}
-	
+
 	private class NotRegisteredException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
+
 	private class GCMException extends Exception {
+		private static final long serialVersionUID = 1L;
 		public GCMException(String error) {
 			super(error);
 		}
+	}
+	
+	public class GoogleAccountException extends Exception {
 		private static final long serialVersionUID = 1L;
+		public GoogleAccountException(String error) {
+			super(error);
+		}
 	}
 
 }
