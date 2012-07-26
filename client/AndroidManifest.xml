@@ -1,56 +1,121 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-This Android Manifest is not used, because Dyad is an Android Library project.
-This manifest contains the needed permissions, activities, and services that
-your application's manifest must include to use Dyad.
 
-Replace "your.app.pkg" with your own package name.
+====================
+Dyad Client Manifest
+====================
+
+This Android Manifest provides the bits and pieces you need to include in
+your own app's manifest for Dyad Client to work.  Please copy and paste the
+relevant directives and supply the missing values where needed.
+
 -->
 
+<!-- Replace "your.app.pkg" with your own package name. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="your.app.pkg"
-    android:versionCode="1"
-    android:versionName="0.1" >
+	package="your.app.pkg"
+	android:versionCode="1"
+	android:versionName="0.1" >
+	
+	<!-- 
 
-    <uses-sdk android:minSdkVersion="8" android:targetSdkVersion="16" />
+	===============
+	ANDROID VERSION
+	===============
+	
+	Feel free to target any Android version you want, as long as it's higher
+	than version 2.2 (api level 8), the minimum required version for Dyad
+	Client apps. -->
+	<uses-sdk android:minSdkVersion="8" android:targetSdkVersion="16" />
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.INTERNET" />
+	<!--
+	
+	===========
+	PERMISSIONS
+	===========-->
+	
+	<!-- Needed to send data to Dyad Server -->
+	<uses-permission android:name="android.permission.INTERNET" />
+	
+	<!-- Needed to select a Google account for authentication to Dyad Server -->
 	<uses-permission android:name="android.permission.GET_ACCOUNTS" />
-    <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" />
-    <uses-permission android:name="android.permission.USE_CREDENTIALS" />
-	<uses-permission android:name="your.app.pkg.permission.C2D_MESSAGE" /> 
+	
+	<!-- Needed to let the user add a Google account in case there are none -->
+	<uses-permission android:name="android.permission.MANAGE_ACCOUNTS" />
+	
+	<!-- Needed to request OAuth2 tokens from the Account Manager -->
+	<uses-permission android:name="android.permission.USE_CREDENTIALS" />
+	
+	<!-- The following permissions are needed for GCM
+	(see http://developer.android.com/guide/google/gcm/gs.html) -->
+
+	<!-- Replace "your.app.pkg" with your own package name -->
+	<permission android:name="your.app.pkg.permission.C2D_MESSAGE" android:protectionLevel="signature" />
+	<uses-permission android:name="your.app.pkg.permission.C2D_MESSAGE" />
 	<uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
-    
-    <!-- Only needed when using Bump -->
-    <uses-permission android:name="android.permission.VIBRATE" />
 	
-	<permission android:name="your.app.pkg.permission.C2D_MESSAGE" 
-	    		android:protectionLevel="signature" />
-    <application
-        android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name" >
-    	
-        <!-- Only needed when using Bump -->
-    	<service android:name="com.bump.api.BumpAPI" >
-        	<intent-filter>
-            	<action android:name="com.bump.api.IBumpAPI" />
-        	</intent-filter>
-  		</service>
-  		
-    	<service android:name="com.r2src.dyad.gcm.IntentService" />
+	<!-- Only needed when using Bump -->
+	<uses-permission android:name="android.permission.VIBRATE" />
+	
+	<application
+		android:icon="@drawable/ic_launcher"
+		android:label="@string/app_name" >
+		
+		<!--
+		
+		=======================
+		CONFIGURATION VARIABLES
+		=======================
+		
+		The sender id used for GCM. You can find this in the URL (yes,
+		really!) of your project page in the Google API Console at
+		https://code.google.com/apis/console -->
+		<meta-data name="com.r2src.dyad.GCM_SENDER_ID" value="1234"/>
+		
+		<!-- The hostname of the server that hosts your instance of Dyad Server -->
+		<meta-data name="com.r2src.dyad.DYAD_SERVER_HOST" value="your-servers-host-name"/>
+		
+		<!-- The port your Dyad Server is listening on (note: if you're
+		using FCGI to run Dyad Server, don't confuse this with the port the
+		FCGI server is listening on.  Your webserver should listen on the
+		port listed here, and pass all requests to the Dyad FCGI server. 
+		See the Dyad Server Documentation at http://www.dyadproject.org/doc/server/ -->
+		<meta-data name="com.r2src.dyad.DYAD_SERVER_PORT"
+		value="your-servers-port"/>
+		
+		<!--
+		
+		==========
+		ACTIVITIES
+		==========
+		
+		No activities yet... -->
 
-    	<receiver android:name="com.r2src.dyad.gcm.BroadcastReceiver" 
-    	          android:permission="com.google.android.c2dm.permission.SEND" >
+		<!--
+		
+		====================
+		RECEIVERS & SERVICES
+		====================-->
+
+		<!-- The broadcast receiver that handles GCM intents -->
+		<receiver android:name="com.r2src.dyad.gcm.BroadcastReceiver" 
+				  android:permission="com.google.android.c2dm.permission.SEND" >
 			<intent-filter>
 				<action android:name="com.google.android.c2dm.intent.RECEIVE" />
 				<action android:name="com.google.android.c2dm.intent.REGISTRATION" />
 				<category android:name="your.app.pkg" />
 			</intent-filter>
 		</receiver>
-  		
+
+		<!-- The service that's started by the previous receiver  -->
+		<service android:name="com.r2src.dyad.gcm.IntentService" />
+		
+		<!-- Only needed when using Bump -->
+		<service android:name="com.bump.api.BumpAPI" >
+			<intent-filter>
+				<action android:name="com.bump.api.IBumpAPI" />
+			</intent-filter>
+		</service>
 	</application>
-    
 </manifest>
