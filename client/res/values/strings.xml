@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="hello">Hello World!</string>
-    <string name="app_name">Dyad</string>
+    <string name="title_activity_account_invalid">Google Account Invalid</string>
+    <string name="account_invalid_error">TODO fill in account invalid error. This should be a multi-line explanation of what happened and what can be done to fix it.</string>
+    <string name="add_account">Add Account</string>
+    <string name="choose_account">Choose different account</string>
 
 </resources>

@@ -100,10 +100,12 @@ relevant directives and supply the missing values where needed.
 
 		<!-- The broadcast receiver that handles GCM intents -->
 		<receiver android:name="com.r2src.dyad.gcm.BroadcastReceiver" 
-				  android:permission="com.google.android.c2dm.permission.SEND" >
+				android:permission="com.google.android.c2dm.permission.SEND" >
 			<intent-filter>
 				<action android:name="com.google.android.c2dm.intent.RECEIVE" />
 				<action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+
+				<!-- Replace "your.app.pkg" with your own package name. -->
 				<category android:name="your.app.pkg" />
 			</intent-filter>
 		</receiver>
@@ -117,5 +119,8 @@ relevant directives and supply the missing values where needed.
 				<action android:name="com.bump.api.IBumpAPI" />
 			</intent-filter>
 		</service>
+
+
+
 	</application>
 </manifest>

@@ -42,6 +42,10 @@
         android:label="@string/app_name" >
         <uses-library android:name="android.test.runner" />
 
+	    <meta-data name="com.r2src.dyad.GCM_SENDER_ID" value="137457006510"/>
+	    <meta-data name="com.r2src.dyad.HOST_NAME" value="goliath"/>
+	    <meta-data name="com.r2src.dyad.PORT" value="9951"/>
+	    
         <activity
             android:name=".example.MainActivity"
             android:label="@string/title_activity_main_activity2" >

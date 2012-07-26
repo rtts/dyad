@@ -1,7 +1,5 @@
 package com.r2src.dyad.example;
 
-import org.apache.http.HttpHost;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
@@ -10,14 +8,12 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.r2src.dyad.DyadAccount;
+import com.r2src.dyad.DyadAccount.GoogleAccountException;
 import com.r2src.dyad.DyadListener;
 import com.r2src.dyad.R;
-import com.r2src.dyad.DyadAccount.GoogleAccountException;
 
-public class MainActivity extends Activity implements DyadListener {
+public class MainActivity extends Activity {
 	private static final String TAG = "MainActivity";
-	
-	private static final String SENDER_ID = "137457006510";
 	
 	DyadAccount account;
 	TextView txtSuccess, txtFailure;
@@ -37,7 +33,7 @@ public class MainActivity extends Activity implements DyadListener {
 		accountName = getSharedPreferences("test", MODE_PRIVATE)
 				.getString("googleAccountName", null);
 
-		account = new DyadAccount(new HttpHost("goliath", 9951), this, this, sessionToken);
+		account = new DyadAccount(new MyDyadListener(), this, sessionToken);
 		
 	}
 
@@ -67,41 +63,45 @@ public class MainActivity extends Activity implements DyadListener {
 	public void registerGCM(View v) {
 		txtSuccess.setVisibility(View.INVISIBLE);
 		txtFailure.setVisibility(View.INVISIBLE);
-		account.registerGCM(this, SENDER_ID);
+		account.registerGCM(this);
 	}
 	
-	@Override
-	public void onRegistered() {
-		txtSuccess.setVisibility(View.VISIBLE);
-		getSharedPreferences("test", MODE_PRIVATE).edit()
-				.putString("session_token", account.getSessionToken())
-				.commit();
-		getSharedPreferences("test", MODE_PRIVATE)
-				.edit()
-				.putString("googleAccountName",
-						account.getGoogleAccountName()).commit();
-	}
-	
-	@Override
-	public void onRegistrationFailed(Exception e) {
-		txtFailure.setVisibility(View.VISIBLE);
-		txtFailure.setText(e.getClass().toString() + ": "
-				+ e.getLocalizedMessage());
-		if (e.getLocalizedMessage() != null)
-			Log.e(TAG, e.getLocalizedMessage());
-	}
+	private class MyDyadListener implements DyadListener {
+		@Override
+		public void onRegistered() {
+			Log.v(TAG, "Registered " + account.getGoogleAccountName());
+			txtSuccess.setVisibility(View.VISIBLE);
+			getSharedPreferences("test", MODE_PRIVATE).edit()
+					.putString("session_token", account.getSessionToken())
+					.commit();
+			getSharedPreferences("test", MODE_PRIVATE)
+					.edit()
+					.putString("googleAccountName",
+							account.getGoogleAccountName()).commit();
+		}
+		
+		@Override
+		public void onRegistrationFailed(Exception e) {
+			txtFailure.setVisibility(View.VISIBLE);
+			txtFailure.setText(e.getClass().toString() + ": "
+					+ e.getLocalizedMessage());
+			if (e.getLocalizedMessage() != null)
+				Log.w(TAG, e.getLocalizedMessage());
+		}
 
-	@Override
-	public void onGCMRegistered() {
-		txtSuccess.setVisibility(View.VISIBLE);
-	}
+		@Override
+		public void onGCMRegistered() {
+			Log.v(TAG, "GCM Registration succeeded");
+			txtSuccess.setVisibility(View.VISIBLE);
+		}
 
-	@Override
-	public void onGCMRegistrationFailed(Exception e) {
-		txtFailure.setVisibility(View.VISIBLE);
-		txtFailure.setText(e.getClass().toString() + ": "
-				+ e.getLocalizedMessage());
-		if (e.getLocalizedMessage() != null)
-			Log.w(TAG, e.getLocalizedMessage());
+		@Override
+		public void onGCMRegistrationFailed(Exception e) {
+			txtFailure.setVisibility(View.VISIBLE);
+			txtFailure.setText(e.getClass().toString() + ": "
+					+ e.getLocalizedMessage());
+			if (e.getLocalizedMessage() != null)
+				Log.w(TAG, e.getLocalizedMessage());
+		}
 	}
 }

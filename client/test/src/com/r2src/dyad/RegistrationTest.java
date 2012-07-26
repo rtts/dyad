@@ -1,12 +1,6 @@
 package com.r2src.dyad;
 
-import java.util.concurrent.TimeUnit;
-
 import junit.framework.TestCase;
-
-import org.apache.http.HttpHost;
-
-import android.os.Handler;
 
 public class RegistrationTest extends TestCase {
 	public void testSuccessfullRegistration() {
