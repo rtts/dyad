@@ -3,21 +3,23 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_gravity="center"
-    android:background="#ffffff"
+    android:background="#aaaaaa"
     android:gravity="center" >
 
     <TextView
         android:id="@+id/account_invalid_error"
-        android:layout_width="fill_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:gravity="center"
+        android:maxEms="20"
         android:padding="@dimen/padding_medium"
-        android:text="@string/account_invalid_error" />
+        android:text="@string/account_invalid_error"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <Button
-        android:id="@+id/button1"
+        android:id="@+id/btn_add_account"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/account_invalid_error"
@@ -25,10 +27,10 @@
         android:text="@string/add_account" />
 
     <Button
-        android:id="@+id/button2"
+        android:id="@+id/btn_choose_account"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/button1"
+        android:layout_below="@id/btn_add_account"
         android:layout_centerHorizontal="true"
         android:text="@string/choose_account" />
 
