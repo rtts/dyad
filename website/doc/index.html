@@ -23,9 +23,6 @@
       <h1>Contents</h1>
       <ul>
         <li><a href="#introduction">Introduction</a></li>
-        <ul>
-          <li><a href="#intro:code">Obtaining the source code</a></li>
-        </ul>
         <li><a href="#server">Dyad Server</a></li>
         <ul>
           <li><a href="#server:overview">Overview</a></li>
@@ -48,8 +45,56 @@
     </div>
 
     <h1 id="introduction">Introduction</h1>
+    <p>
+      In today's world
+      of <a href="http://en.wikipedia.org/wiki/Network_address_translation">NAT</a>s
+      and firewalls, it's a problem for anyone but Skype and your
+      phone company to establish a direct communication socket between
+      two mobile devices. The Dyad Project solves this problem by
+      combining <a href="http://developer.android.com/guide/google/gcm/index.html">GCM</a>
+ and <a href="http://tools.ietf.org/html/rfc5245">ICE</a> to create streaming peer-to-peer
+      connections between apps running on Android devices.
+    </p>
+    <p>
+      It roughly works like this:
+    </p>
+    <p>
+      The Dyad Server keeps a database of pairs of GCM ids, called
+      <b>Dyads</b>. The Dyad Client is an Android Library compiled
+      into an app. When the Dyad Client contacts the Dyad Server, the
+      server fires a GCM message to the correct device, which wakes up
+      and also contacts the server. Through the server, both apps
+      retrieve the information needed to connect directly through
+      ICE. You can configure Dyad to fall back to a relayed
+      (<a href="http://en.wikipedia.org/wiki/TURN">TURN</a>)
+      connection in case this fails. Both apps now possess a UDP
+      communication socket that they can use to send streaming data
+      directly to the other device.
+    </p>
+    
+    <p>
+      The Dyad Project is completely open source and app developers
+      can use it freely. Here's what you need to do to incorporate
+      peer-to-peer-functionality into your own app:
+    </p>
 
-    <h2 id="intro:code">Obtaining the source code</h2>
+    <ol>
+      <li>
+        <p>
+          Get the <a href="http://github.com/r2src/dyad/">source code</a>.
+        </p>
+      </li>
+      <li>
+        <p>
+          Install Dyad Server on a publicly accessible server somewhere.
+        </p>
+      </li>
+      <li>
+        <p>
+          Configure the Dyad Client Library and compile it into your app.
+        </p>
+      </li>
+    </ol>
 
     <h1 id="server">Dyad Server</h1>
 
