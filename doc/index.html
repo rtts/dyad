@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Dyad Project Documentation</title>
+    <link rel="stylesheet" type="text/css" href="/main.css" media="all">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="viewport" content="width=device-width">
+  </head>
+  <body>
+    
+    <div class="header">
+      <a href="/"><img border="0" src="/dyad.png" width="326" height="94" alt="Dyad"></a>
+      <div class="nav">
+        <ul>
+          <li><a href="/">home</a></li> -
+          <li><a href="/doc/">documentation</a></li> -
+          <li><a href="https://github.com/r2src/dyad">source</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="toc">
+      <h1>Contents</h1>
+      <ul>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#server">Dyad Server</a></li>
+        <ul>
+          <li><a href="#server:overview">Overview</a></li>
+          <li><a href="#server:installation">Installation</a></li>
+          <li><a href="#server:perlpod">Perlpod</a></li>
+        </ul>
+        <li><a href="#client">Dyad Client</a></li>
+        <ul>
+          <li><a href="#client:install">Installing the Dyad Client Android Library</a></li>
+          <ul>
+            <li><a href="#client:install:choose_target">Choose an Android target</a></li>
+            <li><a href="#client:install:android-support">Linking to the Android Support Library</a></li>
+            <li><a href="#client:install:bump">Installing Bump</a></li>
+          </ul>
+          <li><a href="#client:examples">Examples</a></li>
+          <li><a href="#client:javadoc">Javadoc</a></li>
+        </ul>
+        <li><a href="#faq">Frequently Asked Questions</a></li>
+      </ul>
+    </div>
+
+    <h1 id="introduction">Introduction</h1>
+    <p>
+      In today's world
+      of <a href="http://en.wikipedia.org/wiki/Network_address_translation">NAT</a>s
+      and firewalls, it's a problem for anyone but Skype and your
+      phone company to establish a direct communication socket between
+      two mobile devices. The Dyad Project solves this problem by
+      combining <a href="http://developer.android.com/guide/google/gcm/index.html">GCM</a>
+ and <a href="http://tools.ietf.org/html/rfc5245">ICE</a> to create streaming peer-to-peer
+      connections between apps running on Android devices.
+    </p>
+    <p>
+      It roughly works like this:
+    </p>
+    <p>
+      The Dyad Server keeps a database of pairs of GCM ids, called
+      <b>Dyads</b>. The Dyad Client is an Android Library compiled
+      into an app. When the Dyad Client contacts the Dyad Server, the
+      server fires a GCM message to the correct device, which wakes up
+      and also contacts the server. Through the server, both apps
+      retrieve the information needed to connect directly through
+      ICE. You can configure Dyad to fall back to a relayed
+      (<a href="http://en.wikipedia.org/wiki/TURN">TURN</a>)
+      connection in case this fails. Both apps now possess a UDP
+      communication socket that they can use to send streaming data
+      directly to the other device.
+    </p>
+    
+    <p>
+      The Dyad Project is completely open source and app developers
+      can use it freely. Here's what you need to do to incorporate
+      peer-to-peer-functionality into your own app:
+    </p>
+
+    <ol>
+      <li>
+        <p>
+          Get the <a href="http://github.com/r2src/dyad/">source code</a>.
+        </p>
+      </li>
+      <li>
+        <p>
+          Install Dyad Server on a publicly accessible server somewhere.
+        </p>
+      </li>
+      <li>
+        <p>
+          Configure the Dyad Client Library and compile it into your app.
+        </p>
+      </li>
+    </ol>
+
+    <h1 id="server">Dyad Server</h1>
+
+    <h2 id="server:overview">Overview</h2>
+
+    <h2 id="server:installation">Installation</h2>
+
+    <h2 id="server:perlpod">Perlpod</h2>
+
+    <h1 id="client">Dyad Client</h1>
+    <p>
+      The Dyad Client is organized as an <a href="http://developer.android.com/tools/projects/index.html#LibraryProjects">Android Library Project</a> that you can import into your own projects.
+
+    <h2 id="client:install">Installing the Dyad Client Android Library</h2>
+    <p>
+      The Dyad Client Android Library is located in the source
+      distribution in the subdirectoy <code>client</code>. To be able
+      to use it, you first need to install the Android SDK
+      from <a href="http://developer.android.com/sdk/">http://developer.android.com/sdk/</a>.
+      After that, you have to configure the Dyad Client Android
+      Library by updating it with an Android target and, optionally,
+      with the <a href="http://bu.mp/company/api">Bump SDK</a> if you
+      want to use Bump to perfom the bonding of dyads.
+    </p>
+
+
+    <h3 id="client:install:choose_target">Choose an Android target</h3>
+    <p>
+      First, run the command <code>android list targets</code> and choose
+      the number that belongs the Android target you are
+      developing your app for. You can install new targets by
+      running just <code>android</code>. The minimum Android
+      version supported by Dyad is Android 2.2 (API 8).
+    </p>
+
+    <p>
+      Second, run the command <code>android update lib-project --target
+      {target} --path {dir}/dyad/client</code> where
+      {target} is the number you found in the previous step and {dir}
+      is the path to the directory where you placed the Dyad
+      source code.
+    </p>
+
+    <h3 id="client:install:android-support">Linking to the Android Support Library</h3>
+    <p>
+      If your app targets an Android version below 3.0, the Dyad
+      Client Library needs the
+      <a href="http://developer.android.com/tools/extras/support-library.html">Android
+      support library</a>. Copy
+      <a href="http://developer.android.com/tools/extras/support-library.html">android-support-v4.jar</a>
+      from the
+      directory <code>android-sdk/extras/android/support/v4/</code>
+      to <code>dyad/client/libs/</code>. If you're developing in Eclipse,
+      you can also right-click your project and select <code>Android Tools > Add
+      Support Library</code>.
+    </p>
+
+    <h3 id="client:install:bump">Installing Bump</h3>
+    <p>
+      If you want to use Bump for
+      bonding, <a href="http://bu.mp/company/api">sign up as a
+      developer</a> for Bump and install the Bump SDK. Then, copy the
+      file BumpBonder.java from the
+      directory <code>dyad/client/extras</code>
+      to <code>dyad/client/src/com/r2src/dyad</code>. You can then use
+      the Bump Bonder like any other bonder.
+    </p>
+
+<h2>Configuring Eclipse</h2>
+
+<p>
+
+Start new Android Project from existing source, use /dyad/client as the project directory.
+(the previous steps already configured this project as an Android Library Project)
+
+TODO: provide simple project.properties for both projects.
+
+Start new Android Project from existing source, use /dyad/client/test as the project directory. Don't start an Android Test Project, because a Test Project cannot test an Android Library Project.
+
+Start new Perl Project. Use dyad/server as the source directory.
+
+          
+    <h2 id="client:examples">Examples</h2>
+
+    <h2 id="client:javadoc">Javadoc</h2>
+
+    <h1 id="faq">Frequently Asked Questions</h1>
+
+    <div style="text-align: center; margin-top: 5em; font-size: .8em">
+      Dyad is a project by <a href="http://r2src.com/"
+      style="font-family: serif"><img border="0"
+      src="http://r2src.com/logo_small.png" style="vertical-align:
+      top"> Return to the Source</a>
+    </div>
+  </body>
+</html>
