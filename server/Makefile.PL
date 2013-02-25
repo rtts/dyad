@@ -13,6 +13,12 @@ WriteMakefile(
       : ()),
     PL_FILES            => {},
     PREREQ_PM => {
+        'Log::Any' => 0,
+        'JSON' => 0,
+        'MongoDB' => 0,
+        'HTTP::Status' => 0,
+        'LWP::UserAgent' => 0,
+        'HTTP::Server::Simple::CGI' => 0,
         'Test::More' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },

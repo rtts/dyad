@@ -11,6 +11,10 @@ can use it to get an idea of the module's uses. It is usually a good idea
 to provide version information here so that people can decide whether
 fixes for the module are worth downloading.
 
+DEPENDENCIES
+
+Make sure MongoDB is running on the server.
+The modules on which Dyad-server depends are listed in Makefile.pl.
 
 INSTALLATION
 
