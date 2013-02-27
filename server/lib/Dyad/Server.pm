@@ -37,7 +37,7 @@ our $api = [
     [
         0,
         POST => qr(^/v1/register$),
-        \&register => [ 'token', 'c2dm_id' ]
+        \&register => [ 'token' ]
     ],
 
 	[
@@ -195,7 +195,7 @@ our @EXPORT_OK = qw(register register_gcm bond stdin http_response json_to_hashr
 
 =head2 register
 
-Should be called with a valid Google OAuth2 token and C2DM registration id. 
+Should be called with a valid Google OAuth2 token 
 
 Returns the tuple ($status_code, $body) where $body might be a hashref or an
 error string.
@@ -212,9 +212,11 @@ sub register {
     );
     my $response = $http_client->request($request);
     if ( $response->is_success ) {
+
         my $json = json_to_hashref $response->decoded_content;
         return 500, "Google has a virus." unless $json;
-
+        my $str = $response->as_string;
+        $log->info("GOOGLE RETURNED: $str");
         my $google_id     = $json->{id};
         my $session_token = '';
         $session_token .= chr( ( rand 93 ) + 33 ) for ( 1 .. 32 );
