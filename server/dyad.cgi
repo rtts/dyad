@@ -1,34 +1,29 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
+use strict;
 
-# step 1:
-$sdp_offer = <STDIN>;
+my $sdp_offer;
+my $max_length = 10000;
+my $supposed_length = $ENV{"CONTENT_LENGTH"};
 
-# step 2:
-unless (&c2dm_request()) {
-	print "Status: 502\n\n";
-	exit;
-}
+yourfault("There's no body in your request, dummy!") if not $supposed_length;
+yourfault("The body of your request is too freaking large!") if $supposed_length > $max_length;
+my $actual_length = read(STDIN, $sdp_offer, $supposed_length) or yourfault("Where's your body, again?");
+yourfault("Your body isn't as long as you say it is...") unless $actual_length == $supposed_length;
 
-$ENV{'QUERY_STRING'} == "/dyad/api/v2/dyad.cgi";
-$ENV{'REQUEST_METHOD'} == "POST";
+# TODO: send GCM message to the other person
 
-my $sdp_answer = &spawn_server(8484);
+# TODO: spawn a server waiting for the other person to contact back
 
-# step 7:
 print "Status: 200\n\n";
-print $sdp_answer;
 
+# TODO: print the sdp_response to stdout
 
-sub c2dm_request() {
-	#TODO
-	1;
+sub yourfault {
+    print "Status: 400\r\n\r\n", @_, '\n';
+    exit;
 }
 
-sub retrieve_answer socket {
-	bind socket Server
-	listen Server, 1
-	accept Client Server
-
-	print Client "You can start ICEing now!"
-	return $sdp_answer;
+sub ourfault {
+    print "Status: 500\r\n\r\n", @_, '\n';
+    exit;
 }
