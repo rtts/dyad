@@ -3,18 +3,31 @@ our $VERSION = '0.01';
 
 =head1 NAME
 
-Dyad::Server - The great new Dyad::Server!
+Dyad::Server - The signalling server accompanying Dyad (see http://r2src.github.com/dyad/).
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+The Dyad Server is used to set up direct peer-to-peer streams between two Android devices.
+It keeps track of users, sessions, bonds, and streams.
 
 Perhaps a little code snippet.
+It can for example be approached with an FCGI script:
 
     use Dyad::Server;
+    use FCGI;
+    use MongoDB::Connection;
+    use Log::Any::Adapter ('File', '/path/to/log/file.log');
 
-    my $foo = Dyad::Server->new();
-    ...
+    my $request =
+      FCGI::Request( \*STDIN, \*STDOUT, \*STDERR, \%ENV,
+        FCGI::OpenSocket( '0.0.0.0:3454', 100 ) );
+    my $conn        = MongoDB::Connection->new;
+    my $db          = $conn->'YOUR_DB_NAME';
+    my $dyad_server = Dyad::Server->new(mongodb => $db);
+
+    while ( $request->Accept() >= 0 ) {
+        print $dyad_server->process_request();
+    }
 
 =cut
 
@@ -48,8 +61,20 @@ our $api = [
 
     [
         1,    # authorization required
-        POST   => qr(^/v1/bond$),
+        POST   => qr(^/v1/bond$), #r
         \&bond => ['secret']
+    ],
+
+    [
+        1,  # authorization required
+        POST => qr(^/v1/sdp_message$), #r
+        \&sdp_message => ['message']
+    ],
+
+    [
+        1,  #authorization required
+        GET => qr(^/v1/sdp_message$), #r
+        \&get_sdp_message => []
     ]
 ];
 
@@ -186,12 +211,14 @@ import and use them directly.
 sub register;
 sub register_gcm;
 sub bond;
+sub sdp_message;
+sub get_sdp_message;
 sub stdin;
 sub http_response;
 sub json_to_hashref;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(register register_gcm bond stdin http_response json_to_hashref);
+our @EXPORT_OK = qw(register register_gcm bond sdp_message get_sdp_message stdin http_response json_to_hashref);
 
 =head2 register
 
@@ -320,6 +347,31 @@ sub bond {
         return 202, "Please wait for other to send secret";
     }
 }
+
+sub sdp_message {
+    my $db = shift;
+    my $message = shift;
+    my $google_id = shift;
+    $db->users->update(
+        { google_id => $google_id },
+        { '$set'  => { message => $message } }
+    );
+    # TODO: send gcm push to other, containing sdp message
+    return 202, "Please wait for sdp answer";
+}
+
+sub get_sdp_message {
+    my $db = shift;
+    my $google_id = shift;
+    my $other = $db->users->find_one({other => $google_id});
+    if ($other && $other->{message}) {
+        return 200, $other->{message};
+    }
+    else {
+        return 404, "Please wait for other to send offer";
+    }
+}
+
 
 =head2 stdin
 

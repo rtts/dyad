@@ -1,9 +1,12 @@
-package com.r2src.dyad;
+package com.r2src.dyad.request;
 
 import java.io.IOException;
 
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+
+import com.r2src.dyad.DyadAccount;
+import com.r2src.dyad.DyadServerException;
 
 /**
  * Base class for all Web API requests to a Dyad Server.

@@ -1,6 +1,10 @@
 #!/usr/bin/perl -w
 use strict;
 
+print "Content-type: text/html\n\n";
+print "hoi!\n";
+exit;
+
 my $sdp_offer;
 my $max_length = 10000;
 my $supposed_length = $ENV{"CONTENT_LENGTH"};
@@ -19,11 +23,11 @@ print "Status: 200\n\n";
 # TODO: print the sdp_response to stdout
 
 sub yourfault {
-    print "Status: 400\r\n\r\n", @_, '\n';
+    print "Status: 400\n\n", @_, "\n";
     exit;
 }
 
 sub ourfault {
-    print "Status: 500\r\n\r\n", @_, '\n';
+    print "Status: 500\n\n", @_, "\n";
     exit;
 }

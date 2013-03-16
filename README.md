@@ -51,7 +51,16 @@ into your own app:
 
 ## Overview
 
+### Resources
+
+  - Users
+  - Sessions
+  - Bonds
+  - Streams
+
 ## Installation
+
+The source code includes a makefile. Compile it by running `perl Makefile.pl`.
 
 ## Perlpod
 

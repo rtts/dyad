@@ -1,6 +1,9 @@
 package com.r2src.dyad;
 
 
+import com.r2src.dyad.request.DyadRequest;
+import com.r2src.dyad.request.DyadStreamRequest;
+
 import android.os.Handler;
 
 /**
@@ -25,7 +28,7 @@ public class Dyad {
 	 * Protected constructor -- call {@link DyadAccount.newDyad()} to create a
 	 * new Dyad.
 	 */
-	protected Dyad(DyadAccount account, String id) {
+	public Dyad(DyadAccount account, String id) {
 		if (account == null)
 			throw new IllegalArgumentException("account can't be null");
 		this.account = account;

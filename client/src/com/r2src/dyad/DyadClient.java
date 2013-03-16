@@ -10,6 +10,8 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.HttpParams;
 
+import com.r2src.dyad.request.DyadRequest;
+
 import android.os.Handler;
 
 /**

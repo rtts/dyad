@@ -2,8 +2,8 @@ use strict;
 use JSON;
 use lib 't';    # the Mock::Google module lives in the test directory
 use Mock::Google;
-use Test::More tests => 61;
-use Dyad::Server qw(register register_gcm bond http_response json_to_hashref);
+use Test::More tests => 67;
+use Dyad::Server qw(register register_gcm bond sdp_message get_sdp_message http_response json_to_hashref);
 
 my $PORT = 8899;
 $Dyad::Server::GOOGLE_URL = "http://localhost:$PORT";
@@ -266,6 +266,64 @@ $users->insert(
 $user1 = $users->find_one( { google_id => 1 } );
 
 is $status, 202, "Re-submitting same secret results in 202 response.";
+
+########################
+# Tests of sdp_message #
+########################
+my $sdp_message = "message";
+
+# post message
+$users->remove;
+$users->batch_insert(
+    [
+        {
+            google_id     => 1,
+            session_token => $token1,
+            c2dm_id       => 'a',
+            other         => 2
+        },
+        {
+            google_id     => 2,
+            session_token => $token2,
+            c2dm_id       => 'a',
+            other         => 1
+        }
+    ]
+);
+
+( $status, $body ) = sdp_message $db, $sdp_message, 1;
+$user1 = $users->find_one( { google_id => 1 } );
+
+is $status, 202, "Posting sdp message results in a 202 response.";
+ok defined $body, "Response has a body.";
+is $user1->{message}, $sdp_message, "SDP Message is inserted in the database.";
+
+# get message
+$users->remove;
+$users->batch_insert(
+    [
+        {
+            google_id     => 1,
+            session_token => $token1,
+            c2dm_id       => 'a',
+            other         => 2,
+            message       => $sdp_message
+        },
+        {
+            google_id     => 2,
+            session_token => $token2,
+            c2dm_id       => 'a',
+            other         => 1
+        }
+    ]
+);
+( $status, $body ) = get_sdp_message $db, 2;
+$user1 = $users->find_one( { google_id => 1 } );
+
+is $status, 200, "Getting sdp message results in a 200 response.";
+ok defined $body, "Response has a body.";
+is $user1->{message}, $body, "Right SDP Message is returned in the body.";
+
 
 ######################
 ## Tests of get_body #

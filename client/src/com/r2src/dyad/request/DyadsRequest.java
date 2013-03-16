@@ -1,4 +1,4 @@
-package com.r2src.dyad;
+package com.r2src.dyad.request;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +11,10 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
+
+import com.r2src.dyad.Dyad;
+import com.r2src.dyad.DyadAccount;
+import com.r2src.dyad.DyadServerException;
 
 
 /**

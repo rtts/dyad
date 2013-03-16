@@ -1,4 +1,4 @@
-package com.r2src.dyad;
+package com.r2src.dyad.request;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -9,6 +9,9 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.r2src.dyad.DyadAccount;
+import com.r2src.dyad.DyadServerException;
 
 
 /**

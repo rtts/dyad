@@ -1,4 +1,4 @@
-package com.r2src.dyad;
+package com.r2src.dyad.request;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -12,11 +12,14 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.r2src.dyad.DyadAccount;
+import com.r2src.dyad.DyadServerException;
+
 /**
  * A request to register an account with the Dyad Server. Also valid for already
  * registered accounts.
  */
-public class DyadRegistrationRequest extends DyadRequest {
+public class DyadRegisterRequest extends DyadRequest {
 
 	private static final String PATH = "/v1/register";
 
@@ -30,7 +33,7 @@ public class DyadRegistrationRequest extends DyadRequest {
 	 * @param c2dm_id
 	 *            The C2DM registration id of the device.
 	 */
-	public DyadRegistrationRequest(String authToken) {
+	public DyadRegisterRequest(String authToken) {
 		request = new HttpPost(PATH);
 		JSONObject body = new JSONObject();
 		HttpEntity entity;

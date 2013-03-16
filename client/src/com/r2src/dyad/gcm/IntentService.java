@@ -7,8 +7,8 @@ import android.support.v4.content.LocalBroadcastManager;
 
 import com.google.android.gcm.GCMBaseIntentService;
 import com.r2src.dyad.DyadAccount;
-import com.r2src.dyad.DyadGCMRequest;
-import com.r2src.dyad.DyadRequest;
+import com.r2src.dyad.request.DyadGCMRequest;
+import com.r2src.dyad.request.DyadRequest;
 
 
 /**

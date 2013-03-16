@@ -18,6 +18,11 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.android.gcm.GCMRegistrar;
+import com.r2src.dyad.request.DyadBondRequest;
+import com.r2src.dyad.request.DyadGCMRequest;
+import com.r2src.dyad.request.DyadRegisterRequest;
+import com.r2src.dyad.request.DyadRequest;
+import com.r2src.dyad.request.DyadsRequest;
 
 /**
  * An account with all of its state stored server-side. Once registered, it only
@@ -431,7 +436,7 @@ public class DyadAccount {
 						.getString(AccountManager.KEY_ACCOUNT_NAME);
 
 				// perform the API request in a separate thread
-				DyadRequest request = new DyadRegistrationRequest(authToken);
+				DyadRequest request = new DyadRegisterRequest(authToken);
 				client.asyncExecute(request, DyadAccount.this,
 						new DyadRequestCallback() {
 
