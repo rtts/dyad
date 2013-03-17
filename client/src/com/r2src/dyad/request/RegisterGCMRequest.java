@@ -10,8 +10,8 @@ import org.apache.http.entity.StringEntity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.r2src.dyad.DyadAccount;
-import com.r2src.dyad.DyadServerException;
+import com.r2src.dyad.Account;
+import com.r2src.dyad.ServerException;
 
 
 /**
@@ -20,7 +20,7 @@ import com.r2src.dyad.DyadServerException;
  * 
  * TODO: implement this request server-side
  */
-public class DyadGCMRequest extends DyadRequest {
+public class RegisterGCMRequest extends Request {
 
 	private static final String PATH = "/v1/gcm";
 
@@ -30,7 +30,7 @@ public class DyadGCMRequest extends DyadRequest {
 	 * @param RegId
 	 *            The GCM registration id of the device.
 	 */
-	public DyadGCMRequest(String regId) {
+	public RegisterGCMRequest(String regId) {
 		request = new HttpPost(PATH);
 		JSONObject body = new JSONObject();
 		HttpEntity entity;
@@ -49,8 +49,8 @@ public class DyadGCMRequest extends DyadRequest {
 	 * Handles the response
 	 */
 	@Override
-	public void onFinished(HttpResponse response, DyadAccount account)
-			throws DyadServerException, IOException {
+	public void onFinished(HttpResponse response, Account account)
+			throws ServerException, IOException {
 
 		JSONObject body;
 		switch (response.getStatusLine().getStatusCode()) {
@@ -61,7 +61,7 @@ public class DyadGCMRequest extends DyadRequest {
 		// TODO: handle the possible server responses
 
 		default:
-			throw new DyadServerException(response);
+			throw new ServerException(response);
 		}
 	}
 }

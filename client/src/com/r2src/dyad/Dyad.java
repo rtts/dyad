@@ -1,8 +1,9 @@
 package com.r2src.dyad;
 
 
-import com.r2src.dyad.request.DyadRequest;
-import com.r2src.dyad.request.DyadStreamRequest;
+import com.r2src.dyad.request.Request;
+import com.r2src.dyad.request.DyadRequestCallback;
+import com.r2src.dyad.request.StreamRequest;
 
 import android.os.Handler;
 
@@ -17,18 +18,18 @@ import android.os.Handler;
  * device calls the bond method and its bonder supplies the same secret, the
  * server will bond the devices and the Dyad is fully operational.
  * <p>
- * A fully operational Dyad can be used to request a {@link DyadStream} object
+ * A fully operational Dyad can be used to request a {@link Stream} object
  * by calling {@link #getStream}.
  */
 public class Dyad {
-	private DyadAccount account;
+	private Account account;
 	private String id;
 	
 	/**
 	 * Protected constructor -- call {@link DyadAccount.newDyad()} to create a
 	 * new Dyad.
 	 */
-	public Dyad(DyadAccount account, String id) {
+	public Dyad(Account account, String id) {
 		if (account == null)
 			throw new IllegalArgumentException("account can't be null");
 		this.account = account;
@@ -39,7 +40,7 @@ public class Dyad {
 	 * 
 	 */
 	public void getStream(DyadRequestCallback foo, Handler handler) {
-		DyadRequest request = new DyadStreamRequest();
+		Request request = new StreamRequest();
 		account.client.asyncExecute(request, account, foo, handler);
 	}
 

@@ -1,4 +1,4 @@
-package com.r2src.dyad;
+package com.r2src.dyad.request;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -10,7 +10,8 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.HttpParams;
 
-import com.r2src.dyad.request.DyadRequest;
+import com.r2src.dyad.Account;
+import com.r2src.dyad.ServerException;
 
 import android.os.Handler;
 
@@ -18,11 +19,11 @@ import android.os.Handler;
  * A client to execute {@link DyadRequests}.
  * 
  */
-public class DyadClient {
+public class Requester {
 	private volatile DefaultHttpClient client;
 	public final ExecutorService executor = Executors.newCachedThreadPool();
 
-	public DyadClient() {
+	public Requester() {
 		// initialize thread-safe http client
 		client = new DefaultHttpClient();
 		ClientConnectionManager mgr = client.getConnectionManager();
@@ -32,13 +33,13 @@ public class DyadClient {
 	}
 
 	/**
-	 * Executes a {@link DyadRequest} and returns the response.
+	 * Executes a {@link Request} and returns the response.
 	 * 
 	 * @param request
 	 * @param dyadAccount
 	 */
-	public HttpResponse execute(DyadRequest request, DyadAccount dyadAccount)
-			throws IOException, DyadServerException {
+	public HttpResponse execute(Request request, Account dyadAccount)
+			throws IOException, ServerException {
 		HttpResponse response = client.execute(dyadAccount.getHost(),
 				request.getHttpRequest());
 		request.onFinished(response, dyadAccount);
@@ -50,8 +51,8 @@ public class DyadClient {
 	 * let asyncRequest return a Future<HttpResponse> Simply change the return
 	 * type and change the Runnable into a Callable.
 	 */
-	public void asyncExecute(final DyadRequest request,
-			final DyadAccount dyadAccount, final DyadRequestCallback callback,
+	public void asyncExecute(final Request request,
+			final Account dyadAccount, final DyadRequestCallback callback,
 			final Handler handler) {
 		if (handler == null)
 			throw new IllegalArgumentException("handler is null");
@@ -75,7 +76,7 @@ public class DyadClient {
 							callback.onError(e);
 						}
 					});
-				} catch (final DyadServerException e) {
+				} catch (final ServerException e) {
 					handler.post(new Runnable() {
 						public void run() {
 							callback.onError(e);

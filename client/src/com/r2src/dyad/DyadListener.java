@@ -3,7 +3,7 @@ package com.r2src.dyad;
 public interface DyadListener {
 	
 	/**
-	 * Called when the {@link DyadAccount} has been successfully registered with the Dyad Server.
+	 * Called when the {@link Account} has been successfully registered with the Dyad Server.
 	 */
 	public abstract void onRegistered();
 	public abstract void onRegistrationFailed(Exception e);

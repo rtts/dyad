@@ -13,15 +13,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import com.r2src.dyad.Dyad;
-import com.r2src.dyad.DyadAccount;
-import com.r2src.dyad.DyadServerException;
+import com.r2src.dyad.Account;
+import com.r2src.dyad.ServerException;
 
 
 /**
  * Requests all dyads that are associated with given user and account. Dyads are
  * currently saved in DyadAccount. TODO: Rewrite so that DyadAccount has no state, by either working with Future objects, or giving a bundle to DyadRequestCallback's onFinished.
  */
-public class DyadsRequest extends DyadRequest {
+public class DyadsRequest extends Request {
 
 	private static final String PATH = "/v1/dyads/";
 
@@ -41,8 +41,8 @@ public class DyadsRequest extends DyadRequest {
 	 * Dyads are saved in the associated account.
 	 */
 	@Override
-	public void onFinished(HttpResponse response, DyadAccount account)
-			throws DyadServerException, IOException {
+	public void onFinished(HttpResponse response, Account account)
+			throws ServerException, IOException {
 
 		JSONArray body;
 		switch (response.getStatusLine().getStatusCode()) {
@@ -52,7 +52,7 @@ public class DyadsRequest extends DyadRequest {
 			break;
 
 		default:
-			throw new DyadServerException(response);
+			throw new ServerException(response);
 		}
 
 		HttpEntity entity = response.getEntity();
@@ -63,9 +63,9 @@ public class DyadsRequest extends DyadRequest {
 				dyads.add(new Dyad(account, body.get(i).toString()));
 			}
 		} catch (ParseException e) {
-			throw new DyadServerException(e, response);
+			throw new ServerException(e, response);
 		} catch (JSONException e) {
-			throw new DyadServerException(e, response);
+			throw new ServerException(e, response);
 		}
 	}
 

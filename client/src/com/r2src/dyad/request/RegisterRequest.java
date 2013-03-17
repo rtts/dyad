@@ -12,14 +12,14 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.r2src.dyad.DyadAccount;
-import com.r2src.dyad.DyadServerException;
+import com.r2src.dyad.Account;
+import com.r2src.dyad.ServerException;
 
 /**
  * A request to register an account with the Dyad Server. Also valid for already
- * registered accounts.
+ * registered accounts. In that case it updates the session token.
  */
-public class DyadRegisterRequest extends DyadRequest {
+public class RegisterRequest extends Request {
 
 	private static final String PATH = "/v1/register";
 
@@ -33,7 +33,7 @@ public class DyadRegisterRequest extends DyadRequest {
 	 * @param c2dm_id
 	 *            The C2DM registration id of the device.
 	 */
-	public DyadRegisterRequest(String authToken) {
+	public RegisterRequest(String authToken) {
 		request = new HttpPost(PATH);
 		JSONObject body = new JSONObject();
 		HttpEntity entity;
@@ -55,8 +55,8 @@ public class DyadRegisterRequest extends DyadRequest {
 	 * token
 	 */
 	@Override
-	public void onFinished(HttpResponse response, DyadAccount account)
-			throws DyadServerException, IOException {
+	public void onFinished(HttpResponse response, Account account)
+			throws ServerException, IOException {
 
 		JSONObject body;
 		switch (response.getStatusLine().getStatusCode()) {
@@ -79,7 +79,7 @@ public class DyadRegisterRequest extends DyadRequest {
 
 			// any kind of error
 		default:
-			throw new DyadServerException(response);
+			throw new ServerException(response);
 		}
 
 		HttpEntity entity = response.getEntity();
@@ -87,9 +87,9 @@ public class DyadRegisterRequest extends DyadRequest {
 			body = new JSONObject(EntityUtils.toString(entity));
 			account.setSessionToken(body.getString("session_token"));
 		} catch (ParseException e) {
-			throw new DyadServerException(e, response);
+			throw new ServerException(e, response);
 		} catch (JSONException e) {
-			throw new DyadServerException(e, response);
+			throw new ServerException(e, response);
 		}
 	}
 }

@@ -51,12 +51,11 @@ into your own app:
 
 ## Overview
 
-### Resources
-
-  - Users
-  - Sessions
-  - Bonds
-  - Streams
+A new User first registers itself with the server. If this succeeds a session token is
+returned. If the User wishes to form a Dyad with another User, they
+decide on a shared secret and send this to the server. Both are
+notified when the Dyad is formed. When a User wants to create a Stream, the server
+is used as a relay to send SDP messages.
 
 ## Installation
 

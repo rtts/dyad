@@ -2,7 +2,6 @@ package com.r2src.dyad;
 
 import org.apache.http.HttpHost;
 
-import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AccountManagerCallback;
 import android.accounts.AccountManagerFuture;
@@ -18,11 +17,13 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.android.gcm.GCMRegistrar;
-import com.r2src.dyad.request.DyadBondRequest;
-import com.r2src.dyad.request.DyadGCMRequest;
-import com.r2src.dyad.request.DyadRegisterRequest;
-import com.r2src.dyad.request.DyadRequest;
+import com.r2src.dyad.request.BondRequest;
+import com.r2src.dyad.request.RegisterGCMRequest;
+import com.r2src.dyad.request.RegisterRequest;
+import com.r2src.dyad.request.Request;
+import com.r2src.dyad.request.DyadRequestCallback;
 import com.r2src.dyad.request.DyadsRequest;
+import com.r2src.dyad.request.Requester;
 
 /**
  * An account with all of its state stored server-side. Once registered, it only
@@ -38,12 +39,11 @@ import com.r2src.dyad.request.DyadsRequest;
  * All the methods of this class are non-blocking and safe to call from the UI
  * thread.
  */
-public class DyadAccount {
-	private static final String KEY_GOOGLE_ACCOUNT_NAME = "googleAccountName";
+public class Account {
+	private static final String TAG = "DyadAccount";
 
 	private static final String KEY_SESSION_TOKEN = "sessionToken";
-
-	private static final String TAG = "DyadAccount";
+	private static final String KEY_GOOGLE_ACCOUNT_NAME = "googleAccountName";
 
 	private static String SENDER_ID;
 	private static HttpHost HOST;
@@ -53,11 +53,11 @@ public class DyadAccount {
 	private volatile String sessionToken;
 	private volatile String googleAccountName;
 
-	DyadClient client = new DyadClient();
+	Requester client = new Requester();
 
-	private volatile static DyadAccount singleton;
+	private volatile static Account singleton;
 
-	private DyadAccount(Context context) {
+	private Account(Context context) {
 		Log.d(TAG, "Creating dyad account singleton object...");
 		Log.d(TAG, "Retrieving meta data from application manifest...");
 		Bundle b = context.getApplicationInfo().metaData;
@@ -90,15 +90,15 @@ public class DyadAccount {
 		Log.v(TAG, sessionToken == null ? "No session token found"
 				: "Session token found");
 		Log.v(TAG, googleAccountName == null ? "No google account name found"
-				: "Google Account Name found");
+				: "Google account name found");
 
 	}
 
-	public static DyadAccount getInstance(Context context) {
+	public static Account getInstance(Context context) {
 		if (singleton == null) {
-			synchronized (DyadAccount.class) {
+			synchronized (Account.class) {
 				if (singleton == null) {
-					singleton = new DyadAccount(context);
+					singleton = new Account(context);
 				}
 			}
 		}
@@ -174,9 +174,9 @@ public class DyadAccount {
 					null, activity, null, null,
 					new AccountRegistrationCallback(), new Handler());
 		} else {
-			Account account = null;
-			Account[] accounts = manager.getAccountsByType("com.google");
-			for (Account a : accounts) {
+			android.accounts.Account account = null;
+			android.accounts.Account[] accounts = manager.getAccountsByType("com.google");
+			for (android.accounts.Account a : accounts) {
 				if (a.name.equals(googleAccountName)) {
 					account = a;
 					break;
@@ -234,10 +234,10 @@ public class DyadAccount {
 		}
 
 		Log.v(TAG, "Looking for Google Account...");
-		Account account = null;
+		android.accounts.Account account = null;
 		AccountManager manager = AccountManager.get(activity);
-		Account[] accounts = manager.getAccountsByType("com.google");
-		for (Account a : accounts) {
+		android.accounts.Account[] accounts = manager.getAccountsByType("com.google");
+		for (android.accounts.Account a : accounts) {
 			if (a.name.equals(googleAccountName)) {
 				account = a;
 				break;
@@ -331,7 +331,7 @@ public class DyadAccount {
 	}
 
 	private void registerGCM(final String regId) {
-		DyadRequest request = new DyadGCMRequest(regId);
+		Request request = new RegisterGCMRequest(regId);
 		client.asyncExecute(request, this, new DyadRequestCallback() {
 			@Override
 			public void onFinished() {
@@ -362,7 +362,7 @@ public class DyadAccount {
 			@Override
 			public void onReceive(Context context, Intent intent) {
 				final String secret = intent.getStringExtra("secret");
-				DyadRequest request = new DyadBondRequest(secret);
+				Request request = new BondRequest(secret);
 				try {
 					authenticate(request);
 				} catch (final NotRegisteredException e) {
@@ -372,7 +372,7 @@ public class DyadAccount {
 						}
 					});
 				}
-				client.asyncExecute(request, DyadAccount.this, foo, handler);
+				client.asyncExecute(request, Account.this, foo, handler);
 
 			}
 		}, new IntentFilter("com.r2src.dyad.action.GOT_SHARED_SECRET"));
@@ -387,12 +387,12 @@ public class DyadAccount {
 			Handler handler) {
 		if (sessionToken == null)
 			throw new IllegalArgumentException("Session Token is null");
-		DyadRequest request = new DyadsRequest(sessionToken);
+		Request request = new DyadsRequest(sessionToken);
 		client.asyncExecute(request, this, foo, handler);
 	}
 
 	/**
-	 * Authenticates a {@link DyadRequest} by adding a custom header containing
+	 * Authenticates a {@link Request} by adding a custom header containing
 	 * the session token.
 	 * 
 	 * @param request
@@ -402,7 +402,7 @@ public class DyadAccount {
 	 *             If there is no session token. Handle this by calling
 	 *             {@link #register} first.
 	 */
-	public void authenticate(DyadRequest request) throws NotRegisteredException {
+	public void authenticate(Request request) throws NotRegisteredException {
 		if (sessionToken == null)
 			throw new NotRegisteredException();
 		request.getHttpRequest().addHeader("X-Dyad-Authentication",
@@ -436,13 +436,13 @@ public class DyadAccount {
 						.getString(AccountManager.KEY_ACCOUNT_NAME);
 
 				// perform the API request in a separate thread
-				DyadRequest request = new DyadRegisterRequest(authToken);
-				client.asyncExecute(request, DyadAccount.this,
+				Request request = new RegisterRequest(authToken);
+				client.asyncExecute(request, Account.this,
 						new DyadRequestCallback() {
 
 							@Override
 							public void onFinished() {
-								DyadAccount.this
+								Account.this
 										.setGoogleAccountName(accountName);
 								dyadListener.onRegistered();
 							}
