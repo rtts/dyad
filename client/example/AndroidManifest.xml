@@ -1,20 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
 
-====================
-Dyad Client Manifest
-====================
-
-This Android Manifest provides the bits and pieces you need to include in
-your own app's manifest for Dyad Client to work.  Please copy and paste the
-relevant directives and supply the missing values where needed.
-
--->
-
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.r2src.dyad"
+<manifest package="com.r2src.dyad.example"
 	android:versionCode="1"
-	android:versionName="0.1" >
+	android:versionName="0.1" xmlns:android="http://schemas.android.com/apk/res/android">
 	
 	<!-- 
 
@@ -25,7 +13,7 @@ relevant directives and supply the missing values where needed.
 	Feel free to target any Android version you want, as long as it's higher
 	than version 2.2 (api level 8), the minimum required version for Dyad
 	Client apps. -->
-	<uses-sdk android:minSdkVersion="8" android:targetSdkVersion="16" />
+	<uses-sdk android:minSdkVersion="8" android:targetSdkVersion="17" />
 
 	<!--
 	
@@ -49,8 +37,8 @@ relevant directives and supply the missing values where needed.
 	(see http://developer.android.com/guide/google/gcm/gs.html) -->
 
 	<!-- Replace "your.app.pkg" with your own package name -->
-	<permission android:name="your.app.pkg.permission.C2D_MESSAGE" android:protectionLevel="signature" />
-	<uses-permission android:name="your.app.pkg.permission.C2D_MESSAGE" />
+	<permission android:name="com.r2src.dyad.example.permission.C2D_MESSAGE" android:protectionLevel="signature" />
+	<uses-permission android:name="com.r2src.dyad.example.permission.C2D_MESSAGE" />
 	<uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	
@@ -59,40 +47,47 @@ relevant directives and supply the missing values where needed.
 	
 	<application
 		android:icon="@drawable/ic_launcher"
-		android:label="your_app_name" >
-		
-		<!--
-		
-		=======================
-		CONFIGURATION VARIABLES
-		=======================
-		
-		The sender id used for GCM. You can find this in the URL (yes,
-		really!) of your project page in the Google API Console at
-		https://code.google.com/apis/console -->
-		<meta-data android:name="com.r2src.dyad.GCM_SENDER_ID" android:value="1234"/>
-		
-		<!-- The hostname of the server that hosts your instance of Dyad Server -->
-		<meta-data android:name="com.r2src.dyad.DYAD_SERVER_HOST" android:value="your-servers-host-name"/>
-		
-		<!-- The port your Dyad Server is listening on (note: if you're
-		using FCGI to run Dyad Server, don't confuse this with the port the
-		FCGI server is listening on.  Your webserver should listen on the
-		port listed here, and pass all requests to the Dyad FCGI server. 
-		See the Dyad Server Documentation at http://www.dyadproject.org/doc/server/ -->
-		<meta-data android:name="com.r2src.dyad.DYAD_SERVER_PORT"
-		android:value="your-servers-port"/>
-		
-		<!--
+		android:label="Dyad Example" >
+
+        <!--
+        
+        =======================
+        CONFIGURATION VARIABLES
+        =======================
+        
+        The sender id used for GCM. You can find this in the URL (yes,
+        really!) of your project page in the Google API Console at
+        https://code.google.com/apis/console -->
+        <meta-data android:name="com.r2src.dyad.GCM_SENDER_ID" android:value="1075287474328"/>
+        
+        <!-- The hostname of the server that hosts your instance of Dyad Server -->
+        <meta-data android:name="com.r2src.dyad.DYAD_SERVER_HOST" android:value="ultra"/>
+        
+        <!-- The port your Dyad Server is listening on (note: if you're
+        using FCGI to run Dyad Server, don't confuse this with the port the
+        FCGI server is listening on.  Your webserver should listen on the
+        port listed here, and pass all requests to the Dyad FCGI server. 
+        See the Dyad Server Documentation at http://www.dyadproject.org/doc/server/ -->
+        <meta-data android:name="com.r2src.dyad.DYAD_SERVER_PORT" android:value="80"/>
+        
+        <!-- 
 		
 		==========
 		ACTIVITIES
 		==========
 		
-		No activities yet... -->
+		 -->
 
-		<activity android:name="com.r2src.dyad.AccountInvalidActivity"/>
+		<activity android:name="com.r2src.dyad.AccountInvalidActivity"></activity>
+		<activity
+            android:name="com.r2src.dyad.example.MainActivity"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
 
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 		<!--
 		
 		====================
@@ -107,7 +102,7 @@ relevant directives and supply the missing values where needed.
 				<action android:name="com.google.android.c2dm.intent.REGISTRATION" />
 
 				<!-- Replace "your.app.pkg" with your own package name. -->
-				<category android:name="your.app.pkg" />
+				<category android:name="com.r2src.dyad.example" />
 			</intent-filter>
 		</receiver>
 

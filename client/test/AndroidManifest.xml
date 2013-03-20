@@ -43,8 +43,8 @@
         <uses-library android:name="android.test.runner" />
 
 	    <meta-data name="com.r2src.dyad.GCM_SENDER_ID" value="137457006510"/>
-	    <meta-data name="com.r2src.dyad.HOST_NAME" value="goliath"/>
-	    <meta-data name="com.r2src.dyad.PORT" value="9951"/>
+	    <meta-data name="com.r2src.dyad.HOST_NAME" value="ultra"/>
+	    <meta-data name="com.r2src.dyad.PORT" value="3454"/>
 	    
         <activity
             android:name=".example.MainActivity"

@@ -5,5 +5,6 @@
     <string name="account_invalid_error">TODO fill in account invalid error. This should be a multi-line explanation of what happened and what can be done to fix it.</string>
     <string name="add_account">Add Account</string>
     <string name="choose_account">Choose different account</string>
-
+    <string name="account_invalid_dialog_message">The account used for this app isn\'t active anymore.</string>
+	<string name="account_invalid_dialog_title">Choose new Google Account?</string>
 </resources>
